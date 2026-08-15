@@ -11,13 +11,13 @@ export function CareerTimeline({
   completedStages,
 }: CareerTimelineProps) {
   return (
-    <section className="glass-panel rounded-2xl p-5 sm:p-6">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold tracking-wide text-ice">生涯时间线</h3>
-        <p className="text-xs text-muted">当前高亮 · 已完成标记</p>
+    <section className="magazine-panel rounded-2xl px-3 py-2.5 sm:px-4">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="text-xs font-semibold text-ink">生涯轨迹</h3>
+        <p className="text-[10px] text-muted">北极 → 退役</p>
       </div>
 
-      <ol className="relative flex flex-col gap-0 sm:flex-row sm:items-stretch sm:justify-between">
+      <ol className="flex w-full items-start justify-between gap-0.5">
         {CAREER_STAGE_ORDER.map((stage, index) => {
           const isCurrent = stage === currentStage;
           const isDone = completedStages.has(stage) && !isCurrent;
@@ -26,36 +26,33 @@ export function CareerTimeline({
           return (
             <li
               key={stage}
-              className="relative flex flex-1 items-center gap-3 py-2 sm:flex-col sm:gap-2 sm:px-1 sm:py-0 sm:text-center"
+              className={`relative flex min-w-0 flex-1 flex-col items-center gap-1 text-center ${
+                isFuture ? "opacity-35" : "opacity-100"
+              }`}
             >
               {index < CAREER_STAGE_ORDER.length - 1 ? (
                 <span
-                  className={`pointer-events-none absolute left-[15px] top-8 h-[calc(100%-12px)] w-px sm:left-[calc(50%+14px)] sm:top-[15px] sm:h-px sm:w-[calc(100%-28px)] ${
-                    isDone || isCurrent ? "bg-ice/50" : "bg-white/10"
+                  className={`pointer-events-none absolute left-[calc(50%+8px)] top-[7px] h-px w-[calc(100%-16px)] ${
+                    isDone || isCurrent ? "bg-ice/50" : "bg-border"
                   }`}
                   aria-hidden
                 />
               ) : null}
 
               <span
-                className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                className={`relative z-10 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold ${
                   isCurrent
-                    ? "bg-orange text-white shadow-[0_0_18px_rgba(255,122,41,0.45)]"
+                    ? "h-4 w-4 bg-orange text-white ring-2 ring-orange/25"
                     : isDone
-                      ? "bg-ice-deep/80 text-white"
-                      : "bg-white/10 text-muted"
+                      ? "bg-ice-deep text-white"
+                      : "bg-[#dce6f0] text-transparent"
                 }`}
               >
-                {isDone ? "✓" : index + 1}
+                {isDone ? "✓" : ""}
               </span>
-
               <span
-                className={`text-sm font-medium ${
-                  isCurrent
-                    ? "text-orange-soft"
-                    : isFuture
-                      ? "text-muted/70"
-                      : "text-white"
+                className={`max-w-full truncate text-[10px] font-medium sm:text-[11px] ${
+                  isCurrent ? "text-orange" : "text-ink"
                 }`}
               >
                 {TIMELINE_LABEL[stage]}

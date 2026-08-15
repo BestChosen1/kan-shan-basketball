@@ -6,7 +6,6 @@ import { CareerHeader } from "@/components/career-header";
 import { CareerInfo } from "@/components/career-info";
 import { CareerSummary } from "@/components/career-summary";
 import { CareerTimeline } from "@/components/career-timeline";
-import { ChoiceButtons } from "@/components/choice-buttons";
 import { ChoiceResultOverlay } from "@/components/choice-result-overlay";
 import {
   computeStatDeltas,
@@ -37,7 +36,7 @@ interface StageTransitionState {
 }
 
 const CHOICE_FEEDBACK_MS = 1000;
-const STAGE_TRANSITION_MS = 1600;
+const STAGE_TRANSITION_MS = 1400;
 
 export default function Home() {
   const [player, setPlayer] = useState<PlayerState>(() => createInitialPlayer());
@@ -151,37 +150,35 @@ export default function Home() {
     : null;
 
   return (
-    <div className="arctic-bg flex min-h-full flex-1 flex-col">
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 py-5 sm:gap-5 sm:px-6 sm:py-8 lg:max-w-7xl">
+    <div className="arctic-bg flex min-h-full flex-1 flex-col overflow-x-hidden">
+      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-2.5 px-3 py-3 sm:gap-3 sm:px-5 sm:py-4 lg:px-6">
         <CareerHeader stage={viewPlayer.stage} />
 
-        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-          <div className="space-y-4">
-            <PlayerCard player={viewPlayer} />
-            <CareerTimeline
-              currentStage={viewPlayer.stage}
-              completedStages={completedStages}
-            />
-          </div>
-
-          <div className="space-y-4">
-            <PlayerStats player={viewPlayer} highlightKeys={highlightKeys} />
-            <CareerInfo player={viewPlayer} />
-          </div>
+        {/* Hero + 状态 + 核心属性（首屏上半） */}
+        <div className="grid gap-2.5 lg:grid-cols-[1.35fr_0.9fr] lg:items-stretch">
+          <PlayerCard player={viewPlayer} />
+          <PlayerStats player={viewPlayer} highlightKeys={highlightKeys} />
         </div>
 
+        {/* 事件 + 选择（首屏下半 / 第二视觉中心） */}
         {finished && !choiceResult && !stageTransition ? (
           <CareerSummary player={displayPlayer} onRestart={handleRestart} />
         ) : event ? (
-          <div className="space-y-4">
-            <CareerEvent event={event} />
-            <ChoiceButtons
-              choices={event.choices}
-              disabled={isTransitioning}
-              onChoose={handleChoice}
-            />
-          </div>
+          <CareerEvent
+            event={event}
+            stage={displayPlayer.stage}
+            historyCount={displayPlayer.careerHistory.length}
+            disabled={isTransitioning}
+            onChoose={handleChoice}
+          />
         ) : null}
+
+        {/* 折线以下：轨迹与生涯信息 */}
+        <CareerTimeline
+          currentStage={viewPlayer.stage}
+          completedStages={completedStages}
+        />
+        <CareerInfo player={viewPlayer} />
       </div>
 
       {choiceResult ? (

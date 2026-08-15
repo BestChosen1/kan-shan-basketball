@@ -1,5 +1,6 @@
-import { STAGE_LABEL, type PlayerState } from "@/game";
-import { TIMELINE_LABEL } from "./career-ui";
+import Image from "next/image";
+import type { PlayerState } from "@/game";
+import { KANSHAN_ASSETS, TIMELINE_LABEL } from "./career-ui";
 
 interface PlayerCardProps {
   player: PlayerState;
@@ -7,53 +8,64 @@ interface PlayerCardProps {
 
 export function PlayerCard({ player }: PlayerCardProps) {
   return (
-    <section className="glass-panel relative overflow-hidden rounded-2xl p-5 sm:p-6">
-      <div className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-ice-deep/30 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-12 left-10 h-32 w-32 rounded-full bg-orange/20 blur-3xl" />
-
-      <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center">
-        <div className="animate-float-soft flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl border border-border bg-gradient-to-br from-white/15 to-white/5 text-5xl shadow-inner sm:h-32 sm:w-32">
-          <span aria-hidden>🦊</span>
+    <section className="magazine-panel relative overflow-hidden rounded-2xl p-3 sm:p-3.5">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] md:items-center">
+        <div className="hero-shadow court-scene relative overflow-hidden rounded-xl">
+          <div className="absolute left-2.5 top-2.5 z-10 rounded-full bg-ink/85 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur-sm">
+            看山 · 生涯档案
+          </div>
+          <div className="relative mx-auto h-[168px] w-full max-w-[220px] sm:h-[190px] lg:h-[200px]">
+            <Image
+              src={KANSHAN_ASSETS.hero}
+              alt="刘看山"
+              fill
+              sizes="(max-width: 768px) 60vw, 220px"
+              className="object-contain object-center p-2"
+              priority
+            />
+          </div>
         </div>
 
-        <div className="min-w-0 flex-1 space-y-3">
+        <div className="flex min-w-0 flex-col gap-2.5">
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-ice/70">主角</p>
-            <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+            <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-[1.7rem]">
               {player.name}
             </h2>
+            <p className="mt-0.5 text-xs text-muted sm:text-sm">
+              {TIMELINE_LABEL[player.stage]} · {player.team}
+            </p>
           </div>
 
-          <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
-            <div className="rounded-xl bg-white/5 px-3 py-2">
-              <dt className="text-muted">年龄</dt>
-              <dd className="font-medium text-white">{player.age} 岁</dd>
-            </div>
-            <div className="rounded-xl bg-white/5 px-3 py-2">
-              <dt className="text-muted">球队</dt>
-              <dd className="truncate font-medium text-white">{player.team}</dd>
-            </div>
-            <div className="rounded-xl bg-white/5 px-3 py-2">
-              <dt className="text-muted">阶段</dt>
-              <dd className="font-medium text-white">
-                {TIMELINE_LABEL[player.stage]}
-                <span className="ml-1 text-xs text-muted">
-                  ({STAGE_LABEL[player.stage]})
-                </span>
-              </dd>
+          <dl className="grid grid-cols-2 gap-1.5">
+            <Meta label="阶段" value={TIMELINE_LABEL[player.stage]} />
+            <Meta label="年龄" value={`${player.age} 岁`} />
+            <div className="col-span-2">
+              <Meta label="球队" value={player.team} />
             </div>
           </dl>
-        </div>
 
-        <div className="animate-pulse-glow flex shrink-0 flex-col items-center justify-center rounded-2xl border border-orange/40 bg-gradient-to-b from-orange/25 to-orange/5 px-6 py-4 sm:min-w-[120px]">
-          <span className="text-xs font-medium tracking-[0.2em] text-orange-soft">
-            OVR
-          </span>
-          <span className="text-5xl font-semibold tabular-nums text-white">
-            {player.overall}
-          </span>
+          <div className="flex items-center justify-between rounded-xl bg-ink px-3 py-2.5 text-white">
+            <div>
+              <p className="text-[10px] font-semibold tracking-[0.18em] text-orange-soft">
+                OVR
+              </p>
+              <p className="text-xs text-white/65">综合评分</p>
+            </div>
+            <p className="text-4xl font-semibold tabular-nums leading-none sm:text-5xl">
+              {player.overall}
+            </p>
+          </div>
         </div>
       </div>
     </section>
+  );
+}
+
+function Meta({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-snow/90 px-2.5 py-1.5">
+      <dt className="text-[10px] text-muted">{label}</dt>
+      <dd className="truncate text-xs font-semibold text-ink sm:text-sm">{value}</dd>
+    </div>
   );
 }

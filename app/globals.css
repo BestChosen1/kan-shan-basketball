@@ -1,18 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --background: #07111f;
-  --foreground: #e8eef7;
-  --ice: #9fd6ff;
-  --ice-deep: #3d8fd4;
-  --panel: rgba(255, 255, 255, 0.08);
-  --panel-strong: rgba(255, 255, 255, 0.12);
-  --border: rgba(159, 214, 255, 0.22);
-  --orange: #ff7a29;
-  --orange-soft: #ffb078;
-  --muted: #9aadc4;
-  --success: #5ee1a4;
-  --danger: #ff7b8a;
+  --background: #f3f6fb;
+  --foreground: #152033;
+  --ice: #5b8fb8;
+  --ice-deep: #2f6f9c;
+  --snow: #ffffff;
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: #ffffff;
+  --border: rgba(47, 111, 156, 0.14);
+  --orange: #e85d04;
+  --orange-soft: #ff8a3d;
+  --muted: #6b7c93;
+  --success: #1f9d6c;
+  --danger: #d6455d;
+  --ink: #0f1b2d;
 }
 
 @theme inline {
@@ -20,6 +22,7 @@
   --color-foreground: var(--foreground);
   --color-ice: var(--ice);
   --color-ice-deep: var(--ice-deep);
+  --color-snow: var(--snow);
   --color-panel: var(--panel);
   --color-panel-strong: var(--panel-strong);
   --color-border: var(--border);
@@ -28,6 +31,7 @@
   --color-muted: var(--muted);
   --color-success: var(--success);
   --color-danger: var(--danger);
+  --color-ink: var(--ink);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -37,16 +41,7 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), "PingFang SC", "Noto Sans SC", sans-serif;
   min-height: 100%;
-}
-
-@keyframes float-soft {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
+  overflow-x: hidden;
 }
 
 @keyframes fade-up {
@@ -60,85 +55,82 @@ body {
   }
 }
 
-@keyframes pulse-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(255, 122, 41, 0.35);
-  }
-  50% {
-    box-shadow: 0 0 28px 4px rgba(255, 122, 41, 0.28);
-  }
-}
-
 @keyframes delta-pop {
   0% {
     opacity: 0;
-    transform: translateY(8px) scale(0.96);
+    transform: translateY(12px) scale(0.96);
   }
-  20% {
+  18% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
-  80% {
+  78% {
     opacity: 1;
   }
   100% {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translateY(-8px);
   }
 }
 
-@keyframes stage-flash {
+@keyframes stage-in {
   0% {
     opacity: 0;
-    transform: scale(0.94);
-  }
-  15% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  85% {
-    opacity: 1;
+    transform: translateY(14px) scale(0.97);
   }
   100% {
-    opacity: 0;
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
-}
-
-.animate-float-soft {
-  animation: float-soft 4.5s ease-in-out infinite;
 }
 
 .animate-fade-up {
-  animation: fade-up 0.45s ease-out both;
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 2.4s ease-in-out infinite;
+  animation: fade-up 0.35s ease-out both;
 }
 
 .animate-delta-pop {
   animation: delta-pop 1s ease-out both;
 }
 
-.animate-stage-flash {
-  animation: stage-flash 1.6s ease-out both;
+.animate-stage-in {
+  animation: stage-in 0.3s ease-out both;
 }
 
 .arctic-bg {
   background:
-    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(61, 143, 212, 0.35), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 90% 0%, rgba(255, 122, 41, 0.12), transparent 50%),
-    radial-gradient(ellipse 70% 50% at 50% 110%, rgba(94, 225, 164, 0.08), transparent 55%),
-    linear-gradient(180deg, #06101c 0%, #0a1628 45%, #0d1b30 100%);
+    radial-gradient(ellipse 70% 45% at 12% -5%, rgba(159, 206, 240, 0.5), transparent 58%),
+    radial-gradient(ellipse 55% 40% at 92% 8%, rgba(255, 138, 61, 0.12), transparent 52%),
+    linear-gradient(180deg, #eef4fb 0%, #f7f9fc 42%, #edf2f8 100%);
 }
 
-.glass-panel {
-  background: linear-gradient(
-    160deg,
-    rgba(255, 255, 255, 0.12) 0%,
-    rgba(255, 255, 255, 0.05) 100%
-  );
+.magazine-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.9));
   border: 1px solid var(--border);
-  backdrop-filter: blur(14px);
+  box-shadow:
+    0 12px 28px rgba(21, 42, 72, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.85) inset;
+}
+
+.hero-shadow {
+  box-shadow:
+    0 16px 32px rgba(21, 42, 72, 0.12),
+    0 4px 12px rgba(21, 42, 72, 0.06);
+}
+
+/* 轻量球场线 + 圆弧 + 淡橙篮球视觉 */
+.court-scene {
+  background:
+    linear-gradient(90deg, transparent 49.5%, rgba(47, 111, 156, 0.12) 49.5%, rgba(47, 111, 156, 0.12) 50.5%, transparent 50.5%),
+    linear-gradient(0deg, transparent 49.5%, rgba(47, 111, 156, 0.1) 49.5%, rgba(47, 111, 156, 0.1) 50.5%, transparent 50.5%),
+    radial-gradient(circle at 50% 50%, transparent 28%, rgba(232, 93, 4, 0.1) 29%, transparent 30%),
+    radial-gradient(circle at 50% 50%, transparent 46%, rgba(47, 111, 156, 0.12) 47%, transparent 48%),
+    radial-gradient(circle at 82% 18%, rgba(232, 93, 4, 0.08), transparent 28%),
+    linear-gradient(160deg, #f7fbff 0%, #eaf1f8 55%, #e4edf6 100%);
+}
+
+.arctic-scene {
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 0%, rgba(186, 220, 245, 0.55), transparent 55%),
+    radial-gradient(circle at 85% 75%, rgba(232, 93, 4, 0.08), transparent 35%),
+    linear-gradient(180deg, #f4f9fd 0%, #e7eef6 100%);
 }

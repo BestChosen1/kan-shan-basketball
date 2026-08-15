@@ -21,16 +21,16 @@ const INFO_ROWS = [
 
 export function CareerInfo({ player }: CareerInfoProps) {
   return (
-    <section className="glass-panel rounded-2xl p-5 sm:p-6">
-      <h3 className="mb-4 text-sm font-semibold tracking-wide text-ice">生涯信息</h3>
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-2">
+    <section className="magazine-panel rounded-2xl p-3 sm:p-3.5">
+      <h3 className="mb-2.5 text-sm font-semibold text-ink">生涯信息</h3>
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
         {INFO_ROWS.map((row) => (
           <div
             key={row.key}
-            className="rounded-xl border border-white/5 bg-white/5 px-3 py-2.5"
+            className="rounded-lg border border-border bg-[#f7fafc] px-2.5 py-2"
           >
-            <dt className="text-xs text-muted">{row.label}</dt>
-            <dd className="mt-1 truncate text-sm font-medium text-white">
+            <dt className="text-[10px] text-muted">{row.label}</dt>
+            <dd className="mt-0.5 truncate text-xs font-semibold text-ink sm:text-sm">
               {row.format(player)}
             </dd>
           </div>

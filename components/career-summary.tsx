@@ -1,5 +1,10 @@
+import Image from "next/image";
 import type { PlayerState } from "@/game";
-import { formatMoney, TIMELINE_LABEL } from "./career-ui";
+import {
+  getAvatarSrc,
+  KANSHAN_ASSETS,
+  TIMELINE_LABEL,
+} from "./career-ui";
 
 interface CareerSummaryProps {
   player: PlayerState;
@@ -11,40 +16,90 @@ export function CareerSummary({ player, onRestart }: CareerSummaryProps) {
     player.trophies.length > 0
       ? player.trophies.join(" · ")
       : player.fame >= 40
-        ? "生涯高光已写入历史（奖杯数据待后续扩展）"
+        ? "生涯高光已写入历史"
         : "暂无奖杯收录";
 
+  const stagesTouched = Array.from(
+    new Set(player.careerHistory.map((entry) => TIMELINE_LABEL[entry.stage])),
+  ).join(" → ");
+
   return (
-    <section className="glass-panel animate-fade-up rounded-2xl p-6 sm:p-8">
-      <p className="text-xs font-medium tracking-[0.18em] text-ice/80">CAREER COMPLETE</p>
-      <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">
-        《刘看山的篮球生涯》
-      </h2>
-      <p className="mt-2 text-sm text-muted">
-        从{TIMELINE_LABEL.NORTH_POLE}启程，最终停在{TIMELINE_LABEL.RETIRED}。
-      </p>
+    <section className="magazine-panel animate-fade-up overflow-hidden rounded-2xl">
+      <div className="grid gap-0 lg:grid-cols-[0.85fr_1.15fr]">
+        <div className="arctic-scene relative flex flex-col justify-between p-4 sm:p-5">
+          <div className="pointer-events-none absolute inset-0 court-scene opacity-40" />
+          <div className="relative z-10 flex items-center gap-2">
+            <div className="relative h-9 w-9 overflow-hidden rounded-full border border-border bg-snow">
+              <Image
+                src={getAvatarSrc("RETIRED")}
+                alt="刘看山头像"
+                width={197}
+                height={207}
+                className="h-full w-full object-contain p-0.5"
+              />
+            </div>
+            <span className="rounded-full bg-ink px-2.5 py-1 text-[11px] font-semibold text-white">
+              退役
+            </span>
+          </div>
+          <div className="relative z-10 mx-auto mt-2 aspect-square w-full max-w-[240px]">
+            <Image
+              src={KANSHAN_ASSETS.hero}
+              alt="刘看山生涯封面"
+              fill
+              sizes="(max-width: 1024px) 70vw, 240px"
+              className="object-contain object-center"
+              priority
+            />
+          </div>
+        </div>
 
-      <dl className="mt-6 grid gap-3 sm:grid-cols-2">
-        <SummaryItem label="最终 OVR" value={String(player.overall)} emphasize />
-        <SummaryItem label="最终球队" value={player.team} />
-        <SummaryItem label="生涯年龄" value={`${player.age} 岁`} />
-        <SummaryItem
-          label="关键事件"
-          value={`${player.careerHistory.length} 次选择`}
-        />
-        <SummaryItem label="主要荣誉" value={honors} />
-        <SummaryItem label="名气" value={String(player.fame)} />
-        <SummaryItem label="知乎声望" value={String(player.zhihuReputation)} />
-        <SummaryItem label="资金" value={formatMoney(player.money)} />
-      </dl>
+        <div className="p-5 sm:p-6">
+          <p className="text-xs font-semibold tracking-[0.16em] text-ice-deep">
+            CAREER COMPLETE
+          </p>
+          <h2 className="mt-1.5 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+            刘看山的篮球生涯
+          </h2>
+          <p className="mt-1.5 text-sm text-muted">
+            从北极启程，最终停在退役。共经历 {player.careerHistory.length}{" "}
+            个关键时刻。
+          </p>
 
-      <button
-        type="button"
-        onClick={onRestart}
-        className="mt-8 inline-flex items-center justify-center rounded-xl bg-orange px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange/90 active:scale-[0.98]"
-      >
-        重新开始
-      </button>
+          <dl className="mt-4 grid gap-2 sm:grid-cols-2">
+            <SummaryItem label="最终 OVR" value={String(player.overall)} emphasize />
+            <SummaryItem
+              label="生涯阶段"
+              value={stagesTouched || TIMELINE_LABEL.RETIRED}
+            />
+            <SummaryItem label="球队" value={player.team} />
+            <SummaryItem label="主要荣誉" value={honors} />
+            <SummaryItem label="名气" value={String(player.fame)} />
+            <SummaryItem label="知乎声望" value={String(player.zhihuReputation)} />
+          </dl>
+
+          <div className="mt-4 overflow-hidden rounded-xl border border-border bg-[#f7fafc]">
+            <div className="relative h-24 w-full sm:h-28">
+              <Image
+                src={KANSHAN_ASSETS.reference}
+                alt="刘看山角色档案"
+                fill
+                sizes="(max-width: 768px) 100vw, 560px"
+                className="object-cover object-center"
+              />
+            </div>
+            <p className="px-3 py-1.5 text-[10px] text-muted">角色档案</p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onRestart}
+            className="mt-4 inline-flex items-center justify-center rounded-xl bg-orange px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-orange/90 active:scale-[0.98]"
+          >
+            重新开始
+          </button>
+        </div>
+      </div>
     </section>
   );
 }
@@ -59,11 +114,11 @@ function SummaryItem({
   emphasize?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-      <dt className="text-xs text-muted">{label}</dt>
+    <div className="rounded-xl border border-border bg-[#f7fafc] px-3 py-2.5">
+      <dt className="text-[10px] text-muted">{label}</dt>
       <dd
-        className={`mt-1 text-sm font-medium ${
-          emphasize ? "text-2xl text-orange-soft" : "text-white"
+        className={`mt-0.5 font-semibold ${
+          emphasize ? "text-xl text-orange" : "text-sm text-ink"
         }`}
       >
         {value}
