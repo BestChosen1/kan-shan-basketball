@@ -1,136 +1,203 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CareerEvent } from "@/components/career-event";
+import { CareerHeader } from "@/components/career-header";
+import { CareerInfo } from "@/components/career-info";
+import { CareerSummary } from "@/components/career-summary";
+import { CareerTimeline } from "@/components/career-timeline";
+import { ChoiceButtons } from "@/components/choice-buttons";
+import { ChoiceResultOverlay } from "@/components/choice-result-overlay";
+import {
+  computeStatDeltas,
+  getStageTransitionCopy,
+  type StatDelta,
+} from "@/components/career-ui";
+import { PlayerCard } from "@/components/player-card";
+import { PlayerStats } from "@/components/player-stats";
+import { StageTransitionOverlay } from "@/components/stage-transition-overlay";
 import {
   applyChoice,
+  CAREER_STAGE_ORDER,
   createInitialPlayer,
   getCurrentEvent,
   isCareerFinished,
-  restartCareer,
-  STAGE_LABEL,
+  type CareerStage,
   type PlayerState,
 } from "@/game";
 
-const SKILL_ROWS = [
-  { key: "shooting", label: "投篮" },
-  { key: "finishing", label: "终结" },
-  { key: "passing", label: "传球" },
-  { key: "defense", label: "防守" },
-  { key: "physical", label: "身体" },
-  { key: "basketballIQ", label: "球商" },
-] as const;
-
-function StatLine({
-  label,
-  value,
-}: {
-  label: string;
-  value: number | string;
-}) {
-  return (
-    <div className="flex justify-between gap-4 border-b border-zinc-200 py-1 text-sm">
-      <span className="text-zinc-500">{label}</span>
-      <span className="font-medium text-zinc-900">{value}</span>
-    </div>
-  );
+interface ChoiceResultState {
+  choiceText: string;
+  deltas: StatDelta[];
 }
+
+interface StageTransitionState {
+  from: CareerStage;
+  to: CareerStage;
+}
+
+const CHOICE_FEEDBACK_MS = 1000;
+const STAGE_TRANSITION_MS = 1600;
 
 export default function Home() {
   const [player, setPlayer] = useState<PlayerState>(() => createInitialPlayer());
-  const event = getCurrentEvent(player);
-  const finished = isCareerFinished(player);
+  const [displayPlayer, setDisplayPlayer] = useState<PlayerState>(() =>
+    createInitialPlayer(),
+  );
+  const [choiceResult, setChoiceResult] = useState<ChoiceResultState | null>(
+    null,
+  );
+  const [stageTransition, setStageTransition] =
+    useState<StageTransitionState | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const timersRef = useRef<number[]>([]);
+
+  const event = getCurrentEvent(displayPlayer);
+  const finished = isCareerFinished(displayPlayer);
+  const viewPlayer = choiceResult ? player : displayPlayer;
+
+  const completedStages = useMemo(() => {
+    const done = new Set<CareerStage>();
+    const currentIndex = CAREER_STAGE_ORDER.indexOf(viewPlayer.stage);
+
+    for (let i = 0; i < currentIndex; i += 1) {
+      const stage = CAREER_STAGE_ORDER[i];
+      if (stage) done.add(stage);
+    }
+
+    if (viewPlayer.stage === "RETIRED") {
+      for (const stage of CAREER_STAGE_ORDER) {
+        done.add(stage);
+      }
+      done.delete("RETIRED");
+    }
+
+    return done;
+  }, [viewPlayer.stage]);
+
+  const highlightKeys = choiceResult?.deltas.map((item) => item.key) ?? [];
+
+  useEffect(() => {
+    return () => {
+      for (const timer of timersRef.current) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, []);
+
+  function clearTimers() {
+    for (const timer of timersRef.current) {
+      window.clearTimeout(timer);
+    }
+    timersRef.current = [];
+  }
+
+  function schedule(fn: () => void, ms: number) {
+    const id = window.setTimeout(fn, ms);
+    timersRef.current.push(id);
+  }
 
   function handleChoice(choiceId: string) {
-    setPlayer((current) => applyChoice(current, choiceId));
+    if (isTransitioning || finished) return;
+
+    const before = player;
+    const currentEvent = getCurrentEvent(before);
+    if (!currentEvent) return;
+
+    const choice = currentEvent.choices.find((item) => item.id === choiceId);
+    if (!choice) return;
+
+    const after = applyChoice(before, choiceId);
+    const deltas = computeStatDeltas(before, after);
+    const stageChanged = before.stage !== after.stage;
+
+    clearTimers();
+    setIsTransitioning(true);
+    setPlayer(after);
+    setChoiceResult({
+      choiceText: choice.text,
+      deltas,
+    });
+
+    schedule(() => {
+      setChoiceResult(null);
+
+      if (stageChanged) {
+        setStageTransition({ from: before.stage, to: after.stage });
+        schedule(() => {
+          setStageTransition(null);
+          setDisplayPlayer(after);
+          setIsTransitioning(false);
+        }, STAGE_TRANSITION_MS);
+      } else {
+        setDisplayPlayer(after);
+        setIsTransitioning(false);
+      }
+    }, CHOICE_FEEDBACK_MS);
   }
 
   function handleRestart() {
-    setPlayer(restartCareer());
+    clearTimers();
+    const next = createInitialPlayer();
+    setPlayer(next);
+    setDisplayPlayer(next);
+    setChoiceResult(null);
+    setStageTransition(null);
+    setIsTransitioning(false);
   }
 
+  const transitionCopy = stageTransition
+    ? getStageTransitionCopy(stageTransition.from, stageTransition.to)
+    : null;
+
   return (
-    <div className="flex flex-1 flex-col bg-zinc-100 text-zinc-900">
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
-        <header className="space-y-1">
-          <p className="text-sm text-zinc-500">看山篮球生涯模拟器 · Step 2 验证</p>
-          <h1 className="text-3xl font-semibold tracking-tight">{player.name}</h1>
-          <p className="text-zinc-600">
-            {STAGE_LABEL[player.stage]} · {player.team}
-          </p>
-        </header>
+    <div className="arctic-bg flex min-h-full flex-1 flex-col">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 py-5 sm:gap-5 sm:px-6 sm:py-8 lg:max-w-7xl">
+        <CareerHeader stage={viewPlayer.stage} />
 
-        <section className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1 rounded-lg bg-white p-4 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-              状态
-            </h2>
-            <StatLine label="阶段" value={STAGE_LABEL[player.stage]} />
-            <StatLine label="球队" value={player.team} />
-            <StatLine label="Overall" value={player.overall} />
-            <StatLine label="年龄" value={player.age} />
-            <StatLine label="体能" value={player.stamina} />
-            <StatLine label="名气" value={player.fame} />
-            <StatLine label="金钱" value={player.money} />
-            <StatLine label="历史事件" value={player.careerHistory.length} />
+        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+          <div className="space-y-4">
+            <PlayerCard player={viewPlayer} />
+            <CareerTimeline
+              currentStage={viewPlayer.stage}
+              completedStages={completedStages}
+            />
           </div>
 
-          <div className="space-y-1 rounded-lg bg-white p-4 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-              六项属性
-            </h2>
-            {SKILL_ROWS.map((row) => (
-              <StatLine key={row.key} label={row.label} value={player[row.key]} />
-            ))}
+          <div className="space-y-4">
+            <PlayerStats player={viewPlayer} highlightKeys={highlightKeys} />
+            <CareerInfo player={viewPlayer} />
           </div>
-        </section>
+        </div>
 
-        {finished || !event ? (
-          <section className="space-y-4 rounded-lg bg-white p-6 shadow-sm">
-            <h2 className="text-2xl font-semibold">生涯结束</h2>
-            <p className="text-zinc-600">
-              刘看山已完成从北极到国家队的旅程，现已退役。共经历{" "}
-              {player.careerHistory.length} 个关键事件。
-            </p>
-            <p className="text-sm text-zinc-500">
-              最终 Overall {player.overall} · 名气 {player.fame} · 知乎声望{" "}
-              {player.zhihuReputation}
-            </p>
-            <button
-              type="button"
-              onClick={handleRestart}
-              className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700"
-            >
-              重新开始生涯
-            </button>
-          </section>
-        ) : (
-          <section className="space-y-4 rounded-lg bg-white p-6 shadow-sm">
-            <div className="space-y-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                当前事件 · {event.id}
-              </p>
-              <h2 className="text-xl font-semibold">{event.title}</h2>
-              <p className="text-zinc-700">{event.description}</p>
-              <blockquote className="border-l-2 border-zinc-300 pl-3 text-sm italic text-zinc-600">
-                看山：{event.kanShanDialogue}
-              </blockquote>
-            </div>
+        {finished && !choiceResult && !stageTransition ? (
+          <CareerSummary player={displayPlayer} onRestart={handleRestart} />
+        ) : event ? (
+          <div className="space-y-4">
+            <CareerEvent event={event} />
+            <ChoiceButtons
+              choices={event.choices}
+              disabled={isTransitioning}
+              onChoose={handleChoice}
+            />
+          </div>
+        ) : null}
+      </div>
 
-            <div className="flex flex-col gap-2">
-              {event.choices.map((choice) => (
-                <button
-                  key={choice.id}
-                  type="button"
-                  onClick={() => handleChoice(choice.id)}
-                  className="rounded-md border border-zinc-300 bg-zinc-50 px-4 py-3 text-left text-sm hover:border-zinc-900 hover:bg-white"
-                >
-                  {choice.text}
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-      </main>
+      {choiceResult ? (
+        <ChoiceResultOverlay
+          choiceText={choiceResult.choiceText}
+          deltas={choiceResult.deltas}
+        />
+      ) : null}
+
+      {transitionCopy ? (
+        <StageTransitionOverlay
+          eyebrow={transitionCopy.eyebrow}
+          title={transitionCopy.title}
+          subtitle={transitionCopy.subtitle}
+        />
+      ) : null}
     </div>
   );
 }

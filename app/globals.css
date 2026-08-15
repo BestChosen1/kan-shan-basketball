@@ -1,26 +1,144 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #07111f;
+  --foreground: #e8eef7;
+  --ice: #9fd6ff;
+  --ice-deep: #3d8fd4;
+  --panel: rgba(255, 255, 255, 0.08);
+  --panel-strong: rgba(255, 255, 255, 0.12);
+  --border: rgba(159, 214, 255, 0.22);
+  --orange: #ff7a29;
+  --orange-soft: #ffb078;
+  --muted: #9aadc4;
+  --success: #5ee1a4;
+  --danger: #ff7b8a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-ice: var(--ice);
+  --color-ice-deep: var(--ice-deep);
+  --color-panel: var(--panel);
+  --color-panel-strong: var(--panel-strong);
+  --color-border: var(--border);
+  --color-orange: var(--orange);
+  --color-orange-soft: var(--orange-soft);
+  --color-muted: var(--muted);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), "PingFang SC", "Noto Sans SC", sans-serif;
+  min-height: 100%;
+}
+
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 122, 41, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 28px 4px rgba(255, 122, 41, 0.28);
+  }
+}
+
+@keyframes delta-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes stage-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  15% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-float-soft {
+  animation: float-soft 4.5s ease-in-out infinite;
+}
+
+.animate-fade-up {
+  animation: fade-up 0.45s ease-out both;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2.4s ease-in-out infinite;
+}
+
+.animate-delta-pop {
+  animation: delta-pop 1s ease-out both;
+}
+
+.animate-stage-flash {
+  animation: stage-flash 1.6s ease-out both;
+}
+
+.arctic-bg {
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(61, 143, 212, 0.35), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 0%, rgba(255, 122, 41, 0.12), transparent 50%),
+    radial-gradient(ellipse 70% 50% at 50% 110%, rgba(94, 225, 164, 0.08), transparent 55%),
+    linear-gradient(180deg, #06101c 0%, #0a1628 45%, #0d1b30 100%);
+}
+
+.glass-panel {
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  border: 1px solid var(--border);
+  backdrop-filter: blur(14px);
 }
