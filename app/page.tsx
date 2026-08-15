@@ -1,68 +1,135 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import {
+  applyChoice,
+  createInitialPlayer,
+  getCurrentEvent,
+  isCareerFinished,
+  restartCareer,
+  STAGE_LABEL,
+  type PlayerState,
+} from "@/game";
+
+const SKILL_ROWS = [
+  { key: "shooting", label: "投篮" },
+  { key: "finishing", label: "终结" },
+  { key: "passing", label: "传球" },
+  { key: "defense", label: "防守" },
+  { key: "physical", label: "身体" },
+  { key: "basketballIQ", label: "球商" },
+] as const;
+
+function StatLine({
+  label,
+  value,
+}: {
+  label: string;
+  value: number | string;
+}) {
+  return (
+    <div className="flex justify-between gap-4 border-b border-zinc-200 py-1 text-sm">
+      <span className="text-zinc-500">{label}</span>
+      <span className="font-medium text-zinc-900">{value}</span>
+    </div>
+  );
+}
 
 export default function Home() {
+  const [player, setPlayer] = useState<PlayerState>(() => createInitialPlayer());
+  const event = getCurrentEvent(player);
+  const finished = isCareerFinished(player);
+
+  function handleChoice(choiceId: string) {
+    setPlayer((current) => applyChoice(current, choiceId));
+  }
+
+  function handleRestart() {
+    setPlayer(restartCareer());
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="flex flex-1 flex-col bg-zinc-100 text-zinc-900">
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+        <header className="space-y-1">
+          <p className="text-sm text-zinc-500">看山篮球生涯模拟器 · Step 2 验证</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{player.name}</h1>
+          <p className="text-zinc-600">
+            {STAGE_LABEL[player.stage]} · {player.team}
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+        </header>
+
+        <section className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1 rounded-lg bg-white p-4 shadow-sm">
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+              状态
+            </h2>
+            <StatLine label="阶段" value={STAGE_LABEL[player.stage]} />
+            <StatLine label="球队" value={player.team} />
+            <StatLine label="Overall" value={player.overall} />
+            <StatLine label="年龄" value={player.age} />
+            <StatLine label="体能" value={player.stamina} />
+            <StatLine label="名气" value={player.fame} />
+            <StatLine label="金钱" value={player.money} />
+            <StatLine label="历史事件" value={player.careerHistory.length} />
+          </div>
+
+          <div className="space-y-1 rounded-lg bg-white p-4 shadow-sm">
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+              六项属性
+            </h2>
+            {SKILL_ROWS.map((row) => (
+              <StatLine key={row.key} label={row.label} value={player[row.key]} />
+            ))}
+          </div>
+        </section>
+
+        {finished || !event ? (
+          <section className="space-y-4 rounded-lg bg-white p-6 shadow-sm">
+            <h2 className="text-2xl font-semibold">生涯结束</h2>
+            <p className="text-zinc-600">
+              刘看山已完成从北极到国家队的旅程，现已退役。共经历{" "}
+              {player.careerHistory.length} 个关键事件。
+            </p>
+            <p className="text-sm text-zinc-500">
+              最终 Overall {player.overall} · 名气 {player.fame} · 知乎声望{" "}
+              {player.zhihuReputation}
+            </p>
+            <button
+              type="button"
+              onClick={handleRestart}
+              className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700"
+            >
+              重新开始生涯
+            </button>
+          </section>
+        ) : (
+          <section className="space-y-4 rounded-lg bg-white p-6 shadow-sm">
+            <div className="space-y-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                当前事件 · {event.id}
+              </p>
+              <h2 className="text-xl font-semibold">{event.title}</h2>
+              <p className="text-zinc-700">{event.description}</p>
+              <blockquote className="border-l-2 border-zinc-300 pl-3 text-sm italic text-zinc-600">
+                看山：{event.kanShanDialogue}
+              </blockquote>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {event.choices.map((choice) => (
+                <button
+                  key={choice.id}
+                  type="button"
+                  onClick={() => handleChoice(choice.id)}
+                  className="rounded-md border border-zinc-300 bg-zinc-50 px-4 py-3 text-left text-sm hover:border-zinc-900 hover:bg-white"
+                >
+                  {choice.text}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );
