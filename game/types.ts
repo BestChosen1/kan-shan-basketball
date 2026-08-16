@@ -7,6 +7,14 @@ export type CareerStage =
   | "NATIONAL_TEAM"
   | "RETIRED";
 
+export type EventVisualType =
+  | "NONE"
+  | "SHOOT"
+  | "DEFENSE"
+  | "DRIVE"
+  | "CELEBRATE"
+  | "CHAMPION";
+
 export type SkillStat =
   | "shooting"
   | "finishing"
@@ -38,6 +46,7 @@ export interface GameEvent {
   description: string;
   kanShanDialogue: string;
   choices: [Choice, Choice, Choice];
+  visualType: EventVisualType;
   nextStageAfterComplete?: CareerStage;
 }
 

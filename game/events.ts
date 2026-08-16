@@ -5,6 +5,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "np-first-ball",
     stage: "NORTH_POLE",
+    visualType: "NONE",
     title: "第一次接触篮球",
     description:
       "极夜漫长，冰面空旷。一只被人遗弃的旧篮球滚到你脚边——你第一次真正握住它。",
@@ -30,6 +31,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "np-arctic-training",
     stage: "NORTH_POLE",
+    visualType: "NONE",
     title: "北极训练",
     description:
       "极寒中的体能课：负重奔跑、雪地折返、手套外的指尖投篮。你的身体在极限里适应篮球。",
@@ -58,6 +60,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "school-tryout",
     stage: "SCHOOL",
+    visualType: "NONE",
     title: "校队选拔",
     description:
       "体育馆里挤满报名的学生。教练只看三轮：运球、投篮、一对一。名单今晚公布。",
@@ -83,6 +86,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "school-first-game",
     stage: "SCHOOL",
+    visualType: "NONE",
     title: "第一次正式比赛",
     description:
       "校际联赛首秀。替补席上心跳如鼓，教练突然喊你的名字——上场两分钟，决定你是否留下。",
@@ -108,6 +112,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "school-focus",
     stage: "SCHOOL",
+    visualType: "NONE",
     title: "选择主攻方向",
     description:
       "教练约谈：你想成为射手、锋线终结者，还是能支配球的组织手？暑假特训名额有限。",
@@ -136,6 +141,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "cuba-school-choice",
     stage: "CUBA",
+    visualType: "NONE",
     title: "CUBA 选校",
     description:
       "几所大学抛来橄榄枝：豪强争冠队、培养体系强的中游校、以及给你首发承诺的新军。",
@@ -161,6 +167,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "cuba-first-league",
     stage: "CUBA",
+    visualType: "SHOOT",
     title: "第一次大学联赛",
     description:
       "CUBA 分区赛开打。强度远超高中：挡拆质量、轮转速度、体能消耗都上了一个台阶。",
@@ -186,6 +193,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "cuba-finals",
     stage: "CUBA",
+    visualType: "SHOOT",
     title: "决赛关键时刻",
     description:
       "全国赛决赛，倒计时 28 秒，落后两分。球到你手上——教练喊暂停，所有人看着你。",
@@ -211,6 +219,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "cuba-draft-decision",
     stage: "CUBA",
+    visualType: "NONE",
     title: "是否参加职业选秀",
     description:
       "CUBA 赛季结束。经纪人、教练、家人意见不一：申报 CBA 选秀，还是再读一年冲全国冠军？",
@@ -239,6 +248,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "cba-draft",
     stage: "CBA",
+    visualType: "NONE",
     title: "CBA 选秀",
     description:
       "选秀夜灯光刺眼。你的名字被念出——职业生涯正式开始，合同与期望一同落下。",
@@ -264,6 +274,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "cba-first-pro-camp",
     stage: "CBA",
+    visualType: "DEFENSE",
     title: "第一次职业训练",
     description:
       "职业队训练强度、录像分析、营养与恢复一应俱全。你第一次明白：天赋只是入场券。",
@@ -289,6 +300,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "cba-starting-battle",
     stage: "CBA",
+    visualType: "DEFENSE",
     title: "首发竞争",
     description:
       "同位置老将仍在，教练公开说：谁能守住对位、谁能稳定贡献，谁就拿首发。",
@@ -314,6 +326,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "cba-big-decision",
     stage: "CBA",
+    visualType: "NONE",
     title: "职业生涯第一次重大选择",
     description:
       "球队摆上两条路：续约深耕国内冲击总冠军，或走出国门冲击更高舞台的试训机会。",
@@ -348,6 +361,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "nba-draft",
     stage: "NBA",
+    visualType: "NONE",
     title: "NBA 选秀",
     description:
       "布鲁克林的舞台比任何联赛都大。球衣还没穿上，镜头已经把你推到世界面前。",
@@ -378,6 +392,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "nba-summer-league",
     stage: "NBA",
+    visualType: "NONE",
     title: "夏季联赛",
     description:
       "拉斯维加斯的夏联是新人战场：球权更多，容错更少，教练组在评估你的地板与天花板。",
@@ -403,6 +418,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "nba-regular-season",
     stage: "NBA",
+    visualType: "SHOOT",
     title: "NBA 常规赛",
     description:
       "82 场漫长旅程。背靠背、时区、身体对抗、角色定位——每一场都在重新定义你是谁。",
@@ -428,6 +444,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "nba-playoff-game",
     stage: "NBA",
+    visualType: "NONE",
     title: "季后赛关键比赛",
     description:
       "季后赛 G5，胜者晋级。对手针对性极强，裁判尺度更紧，观众声浪几乎要把地板掀翻。",
@@ -456,6 +473,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "nt-camp",
     stage: "NATIONAL_TEAM",
+    visualType: "NONE",
     title: "国家队集训",
     description:
       "红衣入营。位置竞争激烈，战术用语与俱乐部不同，荣誉感与压力同时拉满。",
@@ -481,6 +499,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "nt-asia",
     stage: "NATIONAL_TEAM",
+    visualType: "DEFENSE",
     title: "亚洲赛场",
     description:
       "亚洲赛场节奏更快、身体接触更多。你需要在国家队体系里证明自己配得上球衣。",
@@ -506,6 +525,7 @@ export const CAREER_EVENTS: GameEvent[] = [
   {
     id: "nt-world-final",
     stage: "NATIONAL_TEAM",
+    visualType: "CHAMPION",
     title: "国际大赛决赛",
     description:
       "国际大赛决赛夜。哨响之前，你回想起北极的第一下运球——然后走向中圈。",

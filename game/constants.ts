@@ -47,19 +47,36 @@ export const OVERALL_WEIGHTS = {
   basketballIQ: 0.25,
 } as const;
 
+/** 进入各阶段时的年龄 */
+export const STAGE_ENTRY_AGE: Record<CareerStage, number> = {
+  NORTH_POLE: 12,
+  SCHOOL: 15,
+  CUBA: 18,
+  CBA: 22,
+  NBA: 25,
+  NATIONAL_TEAM: 28,
+  RETIRED: 33,
+};
+
+/** 选择带来的正向技能收益放大（改善 Demo 成长手感） */
+export const SKILL_GAIN_MULTIPLIER = 2.5;
+
+/** 每升一阶段，六维技能额外提升 */
+export const STAGE_ADVANCE_SKILL_BONUS = 4;
+
 export const INITIAL_PLAYER = {
   name: "刘看山",
-  age: 12,
+  age: STAGE_ENTRY_AGE.NORTH_POLE,
   stage: "NORTH_POLE" as const,
-  shooting: 45,
-  finishing: 40,
-  passing: 42,
-  defense: 38,
-  physical: 50,
-  basketballIQ: 35,
-  stamina: 70,
-  potential: 90,
-  mental: 60,
+  shooting: 52,
+  finishing: 50,
+  passing: 50,
+  defense: 48,
+  physical: 55,
+  basketballIQ: 48,
+  stamina: 78,
+  potential: 92,
+  mental: 65,
   fame: 0,
   zhihuReputation: 10,
   money: 0,

@@ -1,10 +1,6 @@
 import Image from "next/image";
 import type { PlayerState } from "@/game";
-import {
-  getAvatarSrc,
-  KANSHAN_ASSETS,
-  TIMELINE_LABEL,
-} from "./career-ui";
+import { getAvatarSrc, KanshanFigure, TIMELINE_LABEL } from "./career-ui";
 
 interface CareerSummaryProps {
   player: PlayerState;
@@ -27,9 +23,9 @@ export function CareerSummary({ player, onRestart }: CareerSummaryProps) {
     <section className="magazine-panel animate-fade-up overflow-hidden rounded-2xl">
       <div className="grid gap-0 lg:grid-cols-[0.85fr_1.15fr]">
         <div className="arctic-scene relative flex flex-col justify-between p-4 sm:p-5">
-          <div className="pointer-events-none absolute inset-0 court-scene opacity-40" />
+          <div className="pointer-events-none absolute inset-0 court-scene opacity-35" />
           <div className="relative z-10 flex items-center gap-2">
-            <div className="relative h-9 w-9 overflow-hidden rounded-full border border-border bg-snow">
+            <div className="relative h-9 w-9 overflow-hidden rounded-full border border-border bg-transparent">
               <Image
                 src={getAvatarSrc("RETIRED")}
                 alt="刘看山头像"
@@ -39,17 +35,14 @@ export function CareerSummary({ player, onRestart }: CareerSummaryProps) {
               />
             </div>
             <span className="rounded-full bg-ink px-2.5 py-1 text-[11px] font-semibold text-white">
-              退役
+              退役 · {player.age} 岁
             </span>
           </div>
-          <div className="relative z-10 mx-auto mt-2 aspect-square w-full max-w-[240px]">
-            <Image
-              src={KANSHAN_ASSETS.hero}
-              alt="刘看山生涯封面"
-              fill
-              sizes="(max-width: 1024px) 70vw, 240px"
-              className="object-contain object-center"
+          <div className="relative z-10 mx-auto mt-1 flex h-[220px] w-full max-w-[220px] items-end justify-center sm:h-[260px]">
+            <KanshanFigure
+              stage="RETIRED"
               priority
+              className="h-full w-auto drop-shadow-[0_16px_28px_rgba(21,42,72,0.2)]"
             />
           </div>
         </div>
@@ -62,12 +55,16 @@ export function CareerSummary({ player, onRestart }: CareerSummaryProps) {
             刘看山的篮球生涯
           </h2>
           <p className="mt-1.5 text-sm text-muted">
-            从北极启程，最终停在退役。共经历 {player.careerHistory.length}{" "}
-            个关键时刻。
+            从 12 岁北极启程，到 {player.age}{" "}
+            岁退役。共经历 {player.careerHistory.length} 个关键时刻。
           </p>
 
           <dl className="mt-4 grid gap-2 sm:grid-cols-2">
-            <SummaryItem label="最终 OVR" value={String(player.overall)} emphasize />
+            <SummaryItem
+              label="最终 OVR"
+              value={String(player.overall)}
+              emphasize
+            />
             <SummaryItem
               label="生涯阶段"
               value={stagesTouched || TIMELINE_LABEL.RETIRED}
@@ -75,20 +72,28 @@ export function CareerSummary({ player, onRestart }: CareerSummaryProps) {
             <SummaryItem label="球队" value={player.team} />
             <SummaryItem label="主要荣誉" value={honors} />
             <SummaryItem label="名气" value={String(player.fame)} />
-            <SummaryItem label="知乎声望" value={String(player.zhihuReputation)} />
+            <SummaryItem
+              label="知乎声望"
+              value={String(player.zhihuReputation)}
+            />
           </dl>
 
-          <div className="mt-4 overflow-hidden rounded-xl border border-border bg-[#f7fafc]">
-            <div className="relative h-24 w-full sm:h-28">
+          <div className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-[#f7fafc] p-3">
+            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-transparent">
               <Image
-                src={KANSHAN_ASSETS.reference}
-                alt="刘看山角色档案"
-                fill
-                sizes="(max-width: 768px) 100vw, 560px"
-                className="object-cover object-center"
+                src={getAvatarSrc("RETIRED")}
+                alt="刘看山"
+                width={197}
+                height={207}
+                className="h-full w-full object-contain"
               />
             </div>
-            <p className="px-3 py-1.5 text-[10px] text-muted">角色档案</p>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink">角色档案</p>
+              <p className="mt-0.5 text-xs text-muted">
+                透明立绘 · 北极狐看山
+              </p>
+            </div>
           </div>
 
           <button

@@ -1,19 +1,13 @@
 import type { CareerStage, PlayerState } from "@/game";
+import { SKILL_GAIN_MULTIPLIER } from "@/game";
 
-export const KANSHAN_ASSETS = {
-  hero: "/assets/kanshan/web/kanshan-hero.jpg",
-  avatar: "/assets/kanshan/web/kanshan-avatar.png",
-  avatarScarf: "/assets/kanshan/web/kanshan-avatar-scarf.png",
-  reference: "/assets/kanshan/web/kanshan-reference.webp",
-} as const;
-
-/** 早期北极阶段使用围脖变体头像 */
-export function getAvatarSrc(stage: CareerStage): string {
-  if (stage === "NORTH_POLE" || stage === "SCHOOL") {
-    return KANSHAN_ASSETS.avatarScarf;
-  }
-  return KANSHAN_ASSETS.avatar;
-}
+export {
+  getAvatarSrc,
+  getHeroSheet,
+  KANSHAN_ASSETS,
+  KANSHAN_SHEETS,
+  KanshanFigure,
+} from "./kanshan-figure";
 
 /** UI 展示用短标签（不改动 game 常量） */
 export const TIMELINE_LABEL: Record<CareerStage, string> = {
@@ -117,14 +111,26 @@ export function formatMoney(value: number): string {
   return `¥${value.toLocaleString("zh-CN")}`;
 }
 
-/** 仅用于 UI 展示 Choice.effects，不改游戏逻辑 */
+/** 仅用于 UI 展示 Choice.effects（正向技能按引擎倍率预览） */
 export function formatChoiceEffects(
   effects: Partial<Record<DiffableStatKey | "money", number>>,
 ): string[] {
+  const skillKeys = new Set([
+    "shooting",
+    "finishing",
+    "passing",
+    "defense",
+    "physical",
+    "basketballIQ",
+  ]);
+
   return (Object.keys(effects) as Array<DiffableStatKey | "money">)
     .filter((key) => effects[key] !== undefined && effects[key] !== 0)
     .map((key) => {
-      const delta = effects[key] as number;
+      let delta = effects[key] as number;
+      if (skillKeys.has(key) && delta > 0) {
+        delta = Math.round(delta * SKILL_GAIN_MULTIPLIER);
+      }
       const label = DIFF_LABELS[key as DiffableStatKey] ?? key;
       return `${label} ${delta > 0 ? `+${delta}` : delta}`;
     });

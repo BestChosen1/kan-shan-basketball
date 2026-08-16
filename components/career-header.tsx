@@ -10,7 +10,7 @@ export function CareerHeader({ stage }: CareerHeaderProps) {
   return (
     <header className="magazine-panel flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3">
       <div className="flex min-w-0 items-center gap-2.5">
-        <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-snow">
+        <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-transparent">
           <Image
             src={getAvatarSrc(stage)}
             alt="刘看山"

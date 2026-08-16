@@ -7,8 +7,11 @@ import {
   OVERALL_MAX,
   OVERALL_MIN,
   OVERALL_WEIGHTS,
+  SKILL_GAIN_MULTIPLIER,
   SKILL_MAX,
   SKILL_MIN,
+  STAGE_ADVANCE_SKILL_BONUS,
+  STAGE_ENTRY_AGE,
   STAGE_TEAM,
 } from "./constants.ts";
 import { getEventById, getEventsByStage } from "./events.ts";
@@ -77,6 +80,13 @@ function withRecalculatedOverall(player: PlayerState): PlayerState {
   };
 }
 
+function scaleSkillDelta(delta: number): number {
+  if (delta <= 0) {
+    return delta;
+  }
+  return Math.round(delta * SKILL_GAIN_MULTIPLIER);
+}
+
 function applyEffects(
   player: PlayerState,
   effects: ChoiceEffects,
@@ -86,7 +96,7 @@ function applyEffects(
   for (const key of SKILL_STATS) {
     const delta = effects[key];
     if (delta !== undefined) {
-      next[key] = clampSkill(player[key] + delta);
+      next[key] = clampSkill(player[key] + scaleSkillDelta(delta));
     }
   }
 
@@ -102,6 +112,26 @@ function applyEffects(
   }
 
   return withRecalculatedOverall(next);
+}
+
+function applyStageAdvanceBonus(player: PlayerState): PlayerState {
+  const next: PlayerState = { ...player };
+  for (const key of SKILL_STATS) {
+    next[key] = clampSkill(player[key] + STAGE_ADVANCE_SKILL_BONUS);
+  }
+  return withRecalculatedOverall(next);
+}
+
+function withStageIdentity(
+  player: PlayerState,
+  stage: CareerStage,
+): PlayerState {
+  return {
+    ...player,
+    stage,
+    team: STAGE_TEAM[stage],
+    age: STAGE_ENTRY_AGE[stage],
+  };
 }
 
 function getStageIndex(stage: CareerStage): number {
@@ -126,7 +156,9 @@ export function isStageComplete(player: PlayerState): boolean {
     return true;
   }
 
-  const completedIds = new Set(player.careerHistory.map((entry) => entry.eventId));
+  const completedIds = new Set(
+    player.careerHistory.map((entry) => entry.eventId),
+  );
   return stageEvents.every((event) => completedIds.has(event.id));
 }
 
@@ -179,7 +211,11 @@ export function restartCareer(): PlayerState {
 }
 
 export function getCurrentEvent(player: PlayerState): GameEvent | null {
-  if (player.isGameOver || player.stage === "RETIRED" || !player.currentEventId) {
+  if (
+    player.isGameOver ||
+    player.stage === "RETIRED" ||
+    !player.currentEventId
+  ) {
     return null;
   }
   return getEventById(player.currentEventId) ?? null;
@@ -189,59 +225,45 @@ export function isCareerFinished(player: PlayerState): boolean {
   return player.isGameOver || player.stage === "RETIRED";
 }
 
+function retirePlayer(player: PlayerState): PlayerState {
+  return withRecalculatedOverall({
+    ...withStageIdentity(player, "RETIRED"),
+    currentEventId: null,
+    isGameOver: true,
+  });
+}
+
+function enterPlayableStage(
+  player: PlayerState,
+  stage: CareerStage,
+): PlayerState {
+  const withIdentity = withStageIdentity(player, stage);
+  const withBonus = applyStageAdvanceBonus(withIdentity);
+  const firstEvent = firstEventOfStage(stage);
+
+  return {
+    ...withBonus,
+    currentEventId: firstEvent?.id ?? null,
+    isGameOver: false,
+  };
+}
+
 export function advanceStage(player: PlayerState): PlayerState {
   if (player.stage === "RETIRED" || player.isGameOver) {
-    return {
-      ...player,
-      stage: "RETIRED",
-      team: STAGE_TEAM.RETIRED,
-      currentEventId: null,
-      isGameOver: true,
-    };
+    return retirePlayer(player);
   }
 
   const nextStage = getNextStage(player.stage);
-  if (!nextStage) {
-    return {
-      ...player,
-      stage: "RETIRED",
-      team: STAGE_TEAM.RETIRED,
-      currentEventId: null,
-      isGameOver: true,
-    };
+  if (!nextStage || nextStage === "RETIRED") {
+    return retirePlayer(player);
   }
 
-  if (nextStage === "RETIRED") {
-    return {
-      ...player,
-      stage: "RETIRED",
-      team: STAGE_TEAM.RETIRED,
-      currentEventId: null,
-      isGameOver: true,
-      overall: calculateOverall(player),
-    };
-  }
-
-  const firstEvent = firstEventOfStage(nextStage);
-
-  return withRecalculatedOverall({
-    ...player,
-    stage: nextStage,
-    team: STAGE_TEAM[nextStage],
-    currentEventId: firstEvent?.id ?? null,
-    isGameOver: false,
-  });
+  return enterPlayableStage(player, nextStage);
 }
 
 export function advanceEvent(player: PlayerState): PlayerState {
   if (player.isGameOver || player.stage === "RETIRED") {
-    return {
-      ...player,
-      stage: "RETIRED",
-      team: STAGE_TEAM.RETIRED,
-      currentEventId: null,
-      isGameOver: true,
-    };
+    return retirePlayer(player);
   }
 
   if (!player.currentEventId) {
@@ -261,41 +283,25 @@ export function advanceEvent(player: PlayerState): PlayerState {
     };
   }
 
-  const targetStage = currentEvent.nextStageAfterComplete ?? getNextStage(player.stage);
+  const targetStage =
+    currentEvent.nextStageAfterComplete ?? getNextStage(player.stage);
   if (!targetStage || targetStage === "RETIRED") {
-    return {
-      ...player,
-      stage: "RETIRED",
-      team: STAGE_TEAM.RETIRED,
-      currentEventId: null,
-      isGameOver: true,
-      overall: calculateOverall(player),
-    };
+    return retirePlayer(player);
   }
 
-  const firstEvent = firstEventOfStage(targetStage);
-  return withRecalculatedOverall({
-    ...player,
-    stage: targetStage,
-    team: STAGE_TEAM[targetStage],
-    currentEventId: firstEvent?.id ?? null,
-    isGameOver: false,
-  });
+  return enterPlayableStage(player, targetStage);
 }
 
 function findChoice(event: GameEvent, choiceId: string): Choice | undefined {
   return event.choices.find((choice) => choice.id === choiceId);
 }
 
-export function applyChoice(player: PlayerState, choiceId: string): PlayerState {
+export function applyChoice(
+  player: PlayerState,
+  choiceId: string,
+): PlayerState {
   if (player.isGameOver || player.stage === "RETIRED") {
-    return {
-      ...player,
-      stage: "RETIRED",
-      team: STAGE_TEAM.RETIRED,
-      currentEventId: null,
-      isGameOver: true,
-    };
+    return retirePlayer(player);
   }
 
   const event = getCurrentEvent(player);

@@ -1,5 +1,7 @@
 import Image from "next/image";
 import type { CareerStage, Choice, GameEvent } from "@/game";
+import { EventVisual } from "@/components/event-visual";
+import { getEventVisualSrc } from "@/lib/event-visuals";
 import {
   formatChoiceEffects,
   getAvatarSrc,
@@ -21,60 +23,92 @@ export function CareerEvent({
   disabled,
   onChoose,
 }: CareerEventProps) {
-  return (
-    <section className="magazine-panel animate-fade-up relative overflow-hidden rounded-2xl p-3 sm:p-4">
-      <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full border-[8px] border-orange/10" />
-      <div className="pointer-events-none absolute -bottom-8 left-6 h-20 w-20 rounded-full border-[6px] border-ice/15" />
+  const visualSrc = getEventVisualSrc(event.visualType);
+  const isVisualEvent = Boolean(visualSrc);
 
-      <div className="relative flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-ice-deep">生涯事件</span>
-          <span className="rounded-full bg-ink px-2.5 py-0.5 text-[11px] font-semibold text-white">
-            {TIMELINE_LABEL[stage]}
+  return (
+    <>
+      {/* 普通事件：页内紧凑卡；重大事件：页内摘要 + 全屏弹层选选择 */}
+      <section className="magazine-panel animate-fade-up relative overflow-hidden rounded-2xl p-3 sm:p-4">
+        <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full border-[8px] border-orange/10" />
+        <div className="pointer-events-none absolute -bottom-8 left-6 h-20 w-20 rounded-full border-[6px] border-ice/15" />
+
+        <div className="relative flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-ice-deep">生涯事件</span>
+            <span className="rounded-full bg-ink px-2.5 py-0.5 text-[11px] font-semibold text-white">
+              {TIMELINE_LABEL[stage]}
+            </span>
+            {isVisualEvent ? (
+              <span className="rounded-full bg-orange/15 px-2.5 py-0.5 text-[11px] font-semibold text-orange">
+                关键时刻
+              </span>
+            ) : null}
+          </div>
+          <span className="text-[11px] tabular-nums text-muted">
+            第 {historyCount + 1} 场关键时刻
           </span>
         </div>
-        <span className="text-[11px] tabular-nums text-muted">
-          第 {historyCount + 1} 场关键时刻
-        </span>
-      </div>
 
-      <h3 className="relative mt-2 text-lg font-semibold tracking-tight text-ink sm:text-xl">
-        {event.title}
-      </h3>
-      <p className="relative mt-1.5 line-clamp-2 text-sm leading-6 text-foreground/80 sm:line-clamp-3">
-        {event.description}
-      </p>
+        <h3 className="relative mt-2 text-lg font-semibold tracking-tight text-ink sm:text-xl">
+          {event.title}
+        </h3>
+        <p className="relative mt-1.5 line-clamp-2 text-sm leading-6 text-foreground/80 sm:line-clamp-3">
+          {event.description}
+        </p>
 
-      <div className="relative mt-3 flex gap-2.5">
-        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-border bg-snow">
-          <Image
-            src={getAvatarSrc(stage)}
-            alt="刘看山"
-            width={197}
-            height={208}
-            className="h-full w-full object-contain p-0.5"
-          />
-        </div>
-        <div className="relative min-w-0 flex-1 rounded-xl rounded-tl-md border border-border bg-[#f4f8fc] px-3 py-2">
-          <p className="text-[11px] font-semibold text-ice-deep">刘看山</p>
-          <p className="mt-0.5 line-clamp-2 text-sm leading-5 text-ink">
-            “{event.kanShanDialogue}”
+        {isVisualEvent ? (
+          <p className="relative mt-3 text-xs font-medium text-ice-deep">
+            全屏画面已打开 — 请在弹层中做出选择
           </p>
-        </div>
-      </div>
+        ) : (
+          <>
+            <div className="relative mt-3 flex gap-2.5">
+              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-border bg-transparent">
+                <Image
+                  src={getAvatarSrc(stage)}
+                  alt="刘看山"
+                  width={197}
+                  height={208}
+                  className="h-full w-full object-contain p-0.5"
+                />
+              </div>
+              <div className="relative min-w-0 flex-1 rounded-xl rounded-tl-md border border-border bg-[#f4f8fc] px-3 py-2">
+                <p className="text-[11px] font-semibold text-ice-deep">刘看山</p>
+                <p className="mt-0.5 line-clamp-2 text-sm leading-5 text-ink">
+                  “{event.kanShanDialogue}”
+                </p>
+              </div>
+            </div>
 
-      <div className="relative mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {event.choices.map((choice, index) => (
-          <ChoiceButton
-            key={choice.id}
-            choice={choice}
-            index={index}
-            disabled={disabled}
-            onChoose={onChoose}
-          />
-        ))}
-      </div>
-    </section>
+            <div className="relative mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {event.choices.map((choice, index) => (
+                <ChoiceButton
+                  key={choice.id}
+                  choice={choice}
+                  index={index}
+                  disabled={disabled}
+                  onChoose={onChoose}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+
+      {isVisualEvent && !disabled ? (
+        <EventVisual
+          visualType={event.visualType}
+          title={event.title}
+          description={event.description}
+          dialogue={event.kanShanDialogue}
+          stageLabel={TIMELINE_LABEL[stage]}
+          choices={event.choices}
+          disabled={disabled}
+          onChoose={onChoose}
+        />
+      ) : null}
+    </>
   );
 }
 

@@ -3,6 +3,7 @@ export type {
   CareerStage,
   Choice,
   ChoiceEffects,
+  EventVisualType,
   GameEvent,
   PlayerState,
 } from "./types.ts";
@@ -10,6 +11,8 @@ export type {
 export {
   CAREER_STAGE_ORDER,
   INITIAL_PLAYER,
+  SKILL_GAIN_MULTIPLIER,
+  STAGE_ENTRY_AGE,
   STAGE_LABEL,
   STAGE_TEAM,
 } from "./constants.ts";

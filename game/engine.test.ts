@@ -38,8 +38,9 @@ describe("createInitialPlayer", () => {
     assert.equal(player.isGameOver, false);
     assert.equal(player.careerHistory.length, 0);
     assert.equal(player.currentEventId, "np-first-ball");
+    assert.equal(player.age, 12);
     assert.equal(player.overall, calculateOverall(player));
-    assert.ok(player.overall >= 0 && player.overall <= 99);
+    assert.ok(player.overall >= 45 && player.overall <= 99);
   });
 });
 
@@ -167,6 +168,7 @@ describe("event and stage progression", () => {
     assert.equal(player.stage, "NORTH_POLE");
     player = applyChoice(player, "np-arctic-physical");
     assert.equal(player.stage, "SCHOOL");
+    assert.equal(player.age, 15);
     assert.equal(player.team, "校园篮球队");
     assert.equal(player.currentEventId, "school-tryout");
   });
@@ -175,9 +177,14 @@ describe("event and stage progression", () => {
     const finished = playFullCareer(0);
     assert.equal(finished.stage, "RETIRED");
     assert.equal(finished.isGameOver, true);
+    assert.equal(finished.age, 33);
     assert.equal(finished.team, "退役");
     assert.equal(finished.currentEventId, null);
     assert.ok(isCareerFinished(finished));
+    assert.ok(
+      finished.overall >= 75,
+      `expected strong endgame OVR, got ${finished.overall}`,
+    );
   });
 
   it("can run a full career from NORTH_POLE to RETIRED", () => {
@@ -204,6 +211,15 @@ describe("event and stage progression", () => {
 });
 
 describe("event catalog", () => {
+  const VISUAL_TYPES = new Set([
+    "NONE",
+    "SHOOT",
+    "DEFENSE",
+    "DRIVE",
+    "CELEBRATE",
+    "CHAMPION",
+  ]);
+
   it("has about 20 fixed events with 3 choices each", () => {
     assert.equal(CAREER_EVENTS.length, 20);
     for (const event of CAREER_EVENTS) {
@@ -211,5 +227,37 @@ describe("event catalog", () => {
       assert.ok(event.title.length > 0);
       assert.ok(event.kanShanDialogue.length > 0);
     }
+  });
+
+  it("requires a valid visualType on every event", () => {
+    for (const event of CAREER_EVENTS) {
+      assert.ok(
+        typeof event.visualType === "string",
+        `missing visualType on ${event.id}`,
+      );
+      assert.ok(
+        VISUAL_TYPES.has(event.visualType),
+        `invalid visualType ${event.visualType} on ${event.id}`,
+      );
+    }
+  });
+
+  it("keeps landmark visual bindings without changing choice effects", () => {
+    const byId = Object.fromEntries(
+      CAREER_EVENTS.map((event) => [event.id, event]),
+    );
+    assert.equal(byId["cuba-first-league"]?.visualType, "SHOOT");
+    assert.equal(byId["cuba-finals"]?.visualType, "SHOOT");
+    assert.equal(byId["cba-first-pro-camp"]?.visualType, "DEFENSE");
+    assert.equal(byId["cba-starting-battle"]?.visualType, "DEFENSE");
+    assert.equal(byId["nba-regular-season"]?.visualType, "SHOOT");
+    assert.equal(byId["nt-asia"]?.visualType, "DEFENSE");
+    assert.equal(byId["nt-world-final"]?.visualType, "CHAMPION");
+    assert.equal(byId["np-first-ball"]?.visualType, "NONE");
+
+    const before = createInitialPlayer();
+    const after = applyChoice(before, "np-first-ball-shoot");
+    assert.notEqual(after.shooting, before.shooting);
+    assert.equal(after.careerHistory.length, 1);
   });
 });

@@ -15,12 +15,12 @@ export function StageTransitionOverlay({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f1b2d]/45 px-4 backdrop-blur-[2px]">
       <div className="animate-stage-in magazine-panel max-w-md overflow-hidden rounded-3xl text-center">
-        <div className="relative mx-auto h-28 w-28 overflow-hidden rounded-full border border-border bg-gradient-to-b from-[#f8fbff] to-[#e8eef6] mt-8">
+        <div className="relative mx-auto mt-8 h-28 w-28 overflow-hidden rounded-full border border-border bg-transparent">
           <Image
-            src={KANSHAN_ASSETS.avatar}
+            src={KANSHAN_ASSETS.avatarScarf}
             alt="刘看山"
             width={197}
-            height={207}
+            height={208}
             className="h-full w-full object-contain p-2"
           />
         </div>
