@@ -150,3 +150,32 @@ body {
     radial-gradient(circle at 85% 75%, rgba(232, 93, 4, 0.08), transparent 35%),
     linear-gradient(180deg, #f4f9fd 0%, #e7eef6 100%);
 }
+
+.zhihu-panel {
+  box-shadow:
+    0 12px 28px rgba(21, 42, 72, 0.06),
+    0 0 0 1px rgba(91, 143, 184, 0.08),
+    0 0 24px rgba(91, 143, 184, 0.08);
+}
+
+@keyframes zhihu-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.zhihu-loading-dot {
+  display: inline-block;
+  height: 0.55rem;
+  width: 0.55rem;
+  border-radius: 9999px;
+  background: var(--ice-deep);
+  box-shadow: 0 0 10px rgba(47, 111, 156, 0.45);
+  animation: zhihu-pulse 1s ease-in-out infinite;
+}

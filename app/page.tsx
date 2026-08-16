@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { CareerEvent } from "@/components/career-event";
 import { CareerHeader } from "@/components/career-header";
 import { CareerInfo } from "@/components/career-info";
@@ -17,6 +17,17 @@ import {
 import { PlayerCard } from "@/components/player-card";
 import { PlayerStats } from "@/components/player-stats";
 import { StageTransitionOverlay } from "@/components/stage-transition-overlay";
+import { ZhihuContextCard } from "@/components/zhihu-context-card";
+import {
+  mapCareerAgentOutputToCardStatus,
+  requestCareerAgent,
+  shouldRequestCareerAgent,
+} from "@/lib/career-agent-client";
+import type {
+  CareerAgentClientContext,
+  CareerAgentClientOutput,
+  ZhihuCardStatus,
+} from "@/lib/career-agent-types";
 import {
   applyChoice,
   CAREER_STAGE_ORDER,
@@ -24,12 +35,61 @@ import {
   getCurrentEvent,
   isCareerFinished,
   type CareerStage,
+  type GameEvent,
   type PlayerState,
 } from "@/game";
 
 interface StageTransitionState {
   from: CareerStage;
   to: CareerStage;
+}
+
+function buildPlayerSnapshot(player: PlayerState) {
+  return {
+    name: player.name,
+    age: player.age,
+    team: player.team,
+    overall: player.overall,
+    role: player.role,
+  };
+}
+
+function buildCareerAgentContext(input: {
+  player: PlayerState;
+  event: GameEvent;
+  reason: "MATCH" | "DRAFT" | "STAGE_CHANGE" | "CAREER_COMPLETE";
+}): CareerAgentClientContext {
+  const { player, event, reason } = input;
+  const base: CareerAgentClientContext = {
+    stage: player.stage,
+    eventId: event.id,
+    eventTitle: event.title,
+    eventDescription: event.description,
+    player: buildPlayerSnapshot(player),
+    trigger:
+      reason === "STAGE_CHANGE"
+        ? "STAGE_CHANGE"
+        : reason === "CAREER_COMPLETE"
+          ? "CAREER_COMPLETE"
+          : "EVENT_RESULT",
+  };
+
+  if (reason === "MATCH" && player.lastOutcome?.kind === "MATCH") {
+    base.match = {
+      won: player.lastOutcome.result.won,
+      performance: player.lastOutcome.result.performance,
+    };
+  }
+
+  if (reason === "DRAFT" && player.lastOutcome?.kind === "DRAFT") {
+    base.draft = {
+      league: player.lastOutcome.result.league,
+      pick: player.lastOutcome.result.pick,
+      teamName: player.lastOutcome.result.teamName,
+    };
+  }
+
+  return base;
 }
 
 export default function Home() {
@@ -43,6 +103,12 @@ export default function Home() {
   const [stageTransition, setStageTransition] =
     useState<StageTransitionState | null>(null);
   const [isBusy, setIsBusy] = useState(false);
+  const [zhihuStatus, setZhihuStatus] = useState<ZhihuCardStatus>("idle");
+  const [zhihuResult, setZhihuResult] =
+    useState<CareerAgentClientOutput | null>(null);
+
+  const zhihuRequestIdRef = useRef(0);
+  const zhihuAbortRef = useRef<AbortController | null>(null);
 
   const event = getCurrentEvent(displayPlayer);
   const finished =
@@ -67,6 +133,75 @@ export default function Home() {
 
     return done;
   }, [viewPlayer.stage]);
+
+  function resetZhihuPanel() {
+    zhihuAbortRef.current?.abort();
+    zhihuAbortRef.current = null;
+    zhihuRequestIdRef.current += 1;
+    setZhihuStatus("idle");
+    setZhihuResult(null);
+  }
+
+  function queueZhihuRequest(context: CareerAgentClientContext) {
+    zhihuAbortRef.current?.abort();
+    const controller = new AbortController();
+    zhihuAbortRef.current = controller;
+
+    const requestId = ++zhihuRequestIdRef.current;
+    setZhihuStatus("loading");
+    setZhihuResult(null);
+
+    void requestCareerAgent(context, { signal: controller.signal })
+      .then((response) => {
+        if (requestId !== zhihuRequestIdRef.current) {
+          return;
+        }
+
+        const nextStatus = mapCareerAgentOutputToCardStatus(response);
+        setZhihuStatus(nextStatus);
+        setZhihuResult(response.ok ? response.data : null);
+      })
+      .catch((error: unknown) => {
+        if (
+          (typeof DOMException !== "undefined" &&
+            error instanceof DOMException &&
+            error.name === "AbortError") ||
+          (error instanceof Error && error.name === "AbortError")
+        ) {
+          return;
+        }
+        if (requestId !== zhihuRequestIdRef.current) {
+          return;
+        }
+        setZhihuStatus("error");
+        setZhihuResult(null);
+      });
+  }
+
+  function maybeQueueZhihu(input: {
+    before: PlayerState;
+    after: PlayerState;
+    event: GameEvent;
+  }) {
+    const reason = shouldRequestCareerAgent({
+      eventKind: input.event.eventKind,
+      stageChanged: input.before.stage !== input.after.stage,
+      careerComplete:
+        input.after.stage === "RETIRED" || isCareerFinished(input.after),
+    });
+
+    if (!reason) {
+      return;
+    }
+
+    queueZhihuRequest(
+      buildCareerAgentContext({
+        player: input.after,
+        event: input.event,
+        reason,
+      }),
+    );
+  }
 
   function revealPlayer(next: PlayerState) {
     setDisplayPlayer(next);
@@ -100,6 +235,9 @@ export default function Home() {
 
     setIsBusy(true);
     setPlayer(after);
+
+    // 游戏结果不等待知乎；异步触发且可失败。
+    maybeQueueZhihu({ before, after, event: currentEvent });
 
     if (
       currentEvent.eventKind === "MATCH" &&
@@ -153,6 +291,7 @@ export default function Home() {
   }
 
   function handleRestart() {
+    resetZhihuPanel();
     const next = createInitialPlayer();
     setPlayer(next);
     setDisplayPlayer(next);
@@ -186,6 +325,8 @@ export default function Home() {
             onChoose={handleChoice}
           />
         ) : null}
+
+        <ZhihuContextCard status={zhihuStatus} result={zhihuResult} />
 
         <CareerTimeline
           currentStage={viewPlayer.stage}
