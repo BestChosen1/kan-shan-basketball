@@ -73,6 +73,18 @@ body {
   }
 }
 
+/** 结果卡入场：停留在可见状态，等待用户点「继续」 */
+@keyframes result-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes stage-in {
   0% {
     opacity: 0;
@@ -90,6 +102,10 @@ body {
 
 .animate-delta-pop {
   animation: delta-pop 1s ease-out both;
+}
+
+.animate-result-in {
+  animation: result-in 0.3s ease-out both;
 }
 
 .animate-stage-in {

@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { CareerEvent } from "@/components/career-event";
 import { CareerHeader } from "@/components/career-header";
 import { CareerInfo } from "@/components/career-info";
 import { CareerSummary } from "@/components/career-summary";
 import { CareerTimeline } from "@/components/career-timeline";
-import { ChoiceResultOverlay } from "@/components/choice-result-overlay";
+import {
+  GameResultOverlay,
+  type PendingGameResult,
+} from "@/components/game-result-overlay";
 import {
   computeStatDeltas,
   getStageTransitionCopy,
-  type StatDelta,
 } from "@/components/career-ui";
 import { PlayerCard } from "@/components/player-card";
 import { PlayerStats } from "@/components/player-stats";
@@ -25,35 +27,27 @@ import {
   type PlayerState,
 } from "@/game";
 
-interface ChoiceResultState {
-  choiceText: string;
-  deltas: StatDelta[];
-}
-
 interface StageTransitionState {
   from: CareerStage;
   to: CareerStage;
 }
-
-const CHOICE_FEEDBACK_MS = 1000;
-const STAGE_TRANSITION_MS = 1400;
 
 export default function Home() {
   const [player, setPlayer] = useState<PlayerState>(() => createInitialPlayer());
   const [displayPlayer, setDisplayPlayer] = useState<PlayerState>(() =>
     createInitialPlayer(),
   );
-  const [choiceResult, setChoiceResult] = useState<ChoiceResultState | null>(
+  const [pendingResult, setPendingResult] = useState<PendingGameResult | null>(
     null,
   );
   const [stageTransition, setStageTransition] =
     useState<StageTransitionState | null>(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const timersRef = useRef<number[]>([]);
+  const [isBusy, setIsBusy] = useState(false);
 
   const event = getCurrentEvent(displayPlayer);
-  const finished = isCareerFinished(displayPlayer);
-  const viewPlayer = choiceResult ? player : displayPlayer;
+  const finished =
+    isCareerFinished(displayPlayer) && !pendingResult && !stageTransition;
+  const viewPlayer = pendingResult || stageTransition ? player : displayPlayer;
 
   const completedStages = useMemo(() => {
     const done = new Set<CareerStage>();
@@ -74,30 +68,25 @@ export default function Home() {
     return done;
   }, [viewPlayer.stage]);
 
-  const highlightKeys = choiceResult?.deltas.map((item) => item.key) ?? [];
-
-  useEffect(() => {
-    return () => {
-      for (const timer of timersRef.current) {
-        window.clearTimeout(timer);
-      }
-    };
-  }, []);
-
-  function clearTimers() {
-    for (const timer of timersRef.current) {
-      window.clearTimeout(timer);
-    }
-    timersRef.current = [];
+  function revealPlayer(next: PlayerState) {
+    setDisplayPlayer(next);
+    setIsBusy(false);
   }
 
-  function schedule(fn: () => void, ms: number) {
-    const id = window.setTimeout(fn, ms);
-    timersRef.current.push(id);
+  function beginStageTransition(from: CareerStage, to: CareerStage) {
+    setStageTransition({ from, to });
+  }
+
+  function finishAfterChoice(before: PlayerState, after: PlayerState) {
+    if (before.stage !== after.stage) {
+      beginStageTransition(before.stage, after.stage);
+      return;
+    }
+    revealPlayer(after);
   }
 
   function handleChoice(choiceId: string) {
-    if (isTransitioning || finished) return;
+    if (isBusy || pendingResult || stageTransition || finished) return;
 
     const before = player;
     const currentEvent = getCurrentEvent(before);
@@ -108,41 +97,68 @@ export default function Home() {
 
     const after = applyChoice(before, choiceId);
     const deltas = computeStatDeltas(before, after);
-    const stageChanged = before.stage !== after.stage;
 
-    clearTimers();
-    setIsTransitioning(true);
+    setIsBusy(true);
     setPlayer(after);
-    setChoiceResult({
-      choiceText: choice.text,
-      deltas,
-    });
 
-    schedule(() => {
-      setChoiceResult(null);
+    if (
+      currentEvent.eventKind === "MATCH" &&
+      after.lastOutcome?.kind === "MATCH"
+    ) {
+      setPendingResult({
+        kind: "MATCH",
+        choiceText: choice.text,
+        deltas,
+        outcome: after.lastOutcome,
+      });
+      setIsBusy(false);
+      return;
+    }
 
-      if (stageChanged) {
-        setStageTransition({ from: before.stage, to: after.stage });
-        schedule(() => {
-          setStageTransition(null);
-          setDisplayPlayer(after);
-          setIsTransitioning(false);
-        }, STAGE_TRANSITION_MS);
-      } else {
-        setDisplayPlayer(after);
-        setIsTransitioning(false);
-      }
-    }, CHOICE_FEEDBACK_MS);
+    if (
+      currentEvent.eventKind === "DRAFT" &&
+      after.lastOutcome?.kind === "DRAFT"
+    ) {
+      setPendingResult({
+        kind: "DRAFT",
+        choiceText: choice.text,
+        deltas,
+        outcome: after.lastOutcome,
+      });
+      setIsBusy(false);
+      return;
+    }
+
+    // STORY（及其他无 lastOutcome）：直接进入下一事件 / 阶段过渡
+    finishAfterChoice(before, after);
+  }
+
+  function handleResultContinue() {
+    if (!pendingResult) return;
+    const beforeStage = displayPlayer.stage;
+    const after = player;
+    setPendingResult(null);
+
+    if (beforeStage !== after.stage) {
+      beginStageTransition(beforeStage, after.stage);
+      return;
+    }
+    revealPlayer(after);
+  }
+
+  function handleStageContinue() {
+    if (!stageTransition) return;
+    setStageTransition(null);
+    revealPlayer(player);
   }
 
   function handleRestart() {
-    clearTimers();
     const next = createInitialPlayer();
     setPlayer(next);
     setDisplayPlayer(next);
-    setChoiceResult(null);
+    setPendingResult(null);
     setStageTransition(null);
-    setIsTransitioning(false);
+    setIsBusy(false);
   }
 
   const transitionCopy = stageTransition
@@ -154,26 +170,23 @@ export default function Home() {
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-2.5 px-3 py-3 sm:gap-3 sm:px-5 sm:py-4 lg:px-6">
         <CareerHeader stage={viewPlayer.stage} />
 
-        {/* Hero + 状态 + 核心属性（首屏上半） */}
         <div className="grid gap-2.5 lg:grid-cols-[1.35fr_0.9fr] lg:items-stretch">
           <PlayerCard player={viewPlayer} />
-          <PlayerStats player={viewPlayer} highlightKeys={highlightKeys} />
+          <PlayerStats player={viewPlayer} />
         </div>
 
-        {/* 事件 + 选择（首屏下半 / 第二视觉中心） */}
-        {finished && !choiceResult && !stageTransition ? (
+        {finished ? (
           <CareerSummary player={displayPlayer} onRestart={handleRestart} />
         ) : event ? (
           <CareerEvent
             event={event}
             stage={displayPlayer.stage}
             historyCount={displayPlayer.careerHistory.length}
-            disabled={isTransitioning}
+            disabled={isBusy || Boolean(pendingResult) || Boolean(stageTransition)}
             onChoose={handleChoice}
           />
         ) : null}
 
-        {/* 折线以下：轨迹与生涯信息 */}
         <CareerTimeline
           currentStage={viewPlayer.stage}
           completedStages={completedStages}
@@ -181,18 +194,20 @@ export default function Home() {
         <CareerInfo player={viewPlayer} />
       </div>
 
-      {choiceResult ? (
-        <ChoiceResultOverlay
-          choiceText={choiceResult.choiceText}
-          deltas={choiceResult.deltas}
+      {pendingResult ? (
+        <GameResultOverlay
+          pending={pendingResult}
+          onContinue={handleResultContinue}
         />
       ) : null}
 
-      {transitionCopy ? (
+      {transitionCopy && stageTransition ? (
         <StageTransitionOverlay
           eyebrow={transitionCopy.eyebrow}
           title={transitionCopy.title}
           subtitle={transitionCopy.subtitle}
+          toStage={stageTransition.to}
+          onContinue={handleStageContinue}
         />
       ) : null}
     </div>

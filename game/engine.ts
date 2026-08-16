@@ -1,5 +1,7 @@
 import {
   CAREER_STAGE_ORDER,
+  DRAFT_STOCK_MAX,
+  DRAFT_STOCK_MIN,
   INITIAL_PLAYER,
   METER_MAX,
   METER_MIN,
@@ -14,14 +16,24 @@ import {
   STAGE_ENTRY_AGE,
   STAGE_TEAM,
 } from "./constants.ts";
+import { resolveAwards } from "./awards.ts";
+import { calculateCareerScore, resolveCareerTier } from "./career.ts";
+import { resolveContract } from "./contract.ts";
 import { getEventById, getEventsByStage } from "./events.ts";
+import { resolveDraft, resolveDraftRole } from "./draft.ts";
+import { resolveMatch } from "./match.ts";
 import type {
+  AwardResult,
+  CareerFlag,
   CareerHistoryEntry,
   CareerStage,
   Choice,
   ChoiceEffects,
   ClampStat,
+  ContractResult,
+  DraftResult,
   GameEvent,
+  MatchResult,
   PlayerState,
   SkillStat,
 } from "./types.ts";
@@ -57,6 +69,10 @@ function clampMeter(value: number): number {
 
 function clampMoney(value: number): number {
   return Math.max(MONEY_MIN, Math.round(value));
+}
+
+function clampDraftStock(value: number): number {
+  return clamp(Math.round(value), DRAFT_STOCK_MIN, DRAFT_STOCK_MAX);
 }
 
 export function calculateOverall(
@@ -111,7 +127,40 @@ function applyEffects(
     next.money = clampMoney(player.money + effects.money);
   }
 
+  if (effects.draftStock !== undefined) {
+    next.draftStock = clampDraftStock(player.draftStock + effects.draftStock);
+  }
+
   return withRecalculatedOverall(next);
+}
+
+export function applyChoiceFlags(
+  player: PlayerState,
+  choice: Choice,
+): PlayerState {
+  let flags = [...player.flags];
+  for (const flag of choice.clearFlags ?? []) {
+    flags = flags.filter((item) => item !== flag);
+  }
+  for (const flag of choice.setFlags ?? []) {
+    if (!flags.includes(flag)) {
+      flags.push(flag);
+    }
+  }
+  return { ...player, flags };
+}
+
+export function isEventEligible(
+  event: GameEvent,
+  flags: readonly CareerFlag[],
+): boolean {
+  if (event.requiresFlags?.some((flag) => !flags.includes(flag))) {
+    return false;
+  }
+  if (event.excludesFlags?.some((flag) => flags.includes(flag))) {
+    return false;
+  }
+  return true;
 }
 
 function applyStageAdvanceBonus(player: PlayerState): PlayerState {
@@ -151,7 +200,9 @@ export function isStageComplete(player: PlayerState): boolean {
     return true;
   }
 
-  const stageEvents = getEventsByStage(player.stage);
+  const stageEvents = getEventsByStage(player.stage).filter((event) =>
+    isEventEligible(event, player.flags),
+  );
   if (stageEvents.length === 0) {
     return true;
   }
@@ -162,20 +213,51 @@ export function isStageComplete(player: PlayerState): boolean {
   return stageEvents.every((event) => completedIds.has(event.id));
 }
 
-function firstEventOfStage(stage: CareerStage): GameEvent | undefined {
-  return getEventsByStage(stage)[0];
+function firstEligibleEventOfStage(
+  stage: CareerStage,
+  flags: readonly CareerFlag[],
+): GameEvent | undefined {
+  return getEventsByStage(stage).find((event) =>
+    isEventEligible(event, flags),
+  );
 }
 
-function nextEventInStage(
+function nextEligibleInStage(
   stage: CareerStage,
   currentEventId: string,
+  flags: readonly CareerFlag[],
 ): GameEvent | undefined {
   const stageEvents = getEventsByStage(stage);
   const index = stageEvents.findIndex((event) => event.id === currentEventId);
   if (index < 0) {
     return undefined;
   }
-  return stageEvents[index + 1];
+  return stageEvents
+    .slice(index + 1)
+    .find((event) => isEventEligible(event, flags));
+}
+
+function goToEvent(player: PlayerState, eventId: string): PlayerState {
+  const target = getEventById(eventId);
+  if (!target) {
+    return retirePlayer(player);
+  }
+
+  if (target.stage === player.stage) {
+    return {
+      ...player,
+      currentEventId: target.id,
+      isGameOver: false,
+    };
+  }
+
+  const withIdentity = withStageIdentity(player, target.stage);
+  const withBonus = applyStageAdvanceBonus(withIdentity);
+  return {
+    ...withBonus,
+    currentEventId: target.id,
+    isGameOver: false,
+  };
 }
 
 export function createInitialPlayer(): PlayerState {
@@ -197,10 +279,23 @@ export function createInitialPlayer(): PlayerState {
     zhihuReputation: INITIAL_PLAYER.zhihuReputation,
     money: INITIAL_PLAYER.money,
     team: INITIAL_PLAYER.team,
-    trophies: [...INITIAL_PLAYER.trophies],
+    trophies: [],
+    awards: [],
     careerHistory: [],
-    currentEventId: firstEventOfStage("NORTH_POLE")?.id ?? null,
+    currentEventId:
+      firstEligibleEventOfStage("NORTH_POLE", [])?.id ?? null,
     isGameOver: false,
+    wins: INITIAL_PLAYER.wins,
+    losses: INITIAL_PLAYER.losses,
+    matchHistory: [],
+    draftHistory: [],
+    contracts: [],
+    draftStock: INITIAL_PLAYER.draftStock,
+    role: INITIAL_PLAYER.role,
+    lastOutcome: null,
+    careerScore: INITIAL_PLAYER.careerScore,
+    careerTier: null,
+    flags: [],
   };
 
   return withRecalculatedOverall(base);
@@ -226,24 +321,42 @@ export function isCareerFinished(player: PlayerState): boolean {
 }
 
 function retirePlayer(player: PlayerState): PlayerState {
-  return withRecalculatedOverall({
+  const retired = withRecalculatedOverall({
     ...withStageIdentity(player, "RETIRED"),
     currentEventId: null,
     isGameOver: true,
   });
+  const careerScore = calculateCareerScore(retired);
+  return {
+    ...retired,
+    careerScore,
+    careerTier: resolveCareerTier(careerScore),
+  };
 }
 
 function enterPlayableStage(
   player: PlayerState,
   stage: CareerStage,
 ): PlayerState {
+  if (stage === "RETIRED") {
+    return retirePlayer(player);
+  }
+
   const withIdentity = withStageIdentity(player, stage);
   const withBonus = applyStageAdvanceBonus(withIdentity);
-  const firstEvent = firstEventOfStage(stage);
+  const firstEvent = firstEligibleEventOfStage(stage, withBonus.flags);
+
+  if (!firstEvent) {
+    const further = getNextStage(stage);
+    if (!further || further === "RETIRED") {
+      return retirePlayer(withBonus);
+    }
+    return enterPlayableStage(withBonus, further);
+  }
 
   return {
     ...withBonus,
-    currentEventId: firstEvent?.id ?? null,
+    currentEventId: firstEvent.id,
     isGameOver: false,
   };
 }
@@ -261,6 +374,55 @@ export function advanceStage(player: PlayerState): PlayerState {
   return enterPlayableStage(player, nextStage);
 }
 
+export function advanceFromChoice(
+  player: PlayerState,
+  event: GameEvent,
+  choice: Choice,
+): PlayerState {
+  if (player.isGameOver || player.stage === "RETIRED") {
+    return retirePlayer(player);
+  }
+
+  if (choice.nextEventId) {
+    return goToEvent(player, choice.nextEventId);
+  }
+
+  if (choice.nextStage) {
+    if (choice.nextStage === "RETIRED") {
+      return retirePlayer(player);
+    }
+    return enterPlayableStage(player, choice.nextStage);
+  }
+
+  if (event.nextEventId) {
+    const routed = getEventById(event.nextEventId);
+    if (routed && isEventEligible(routed, player.flags)) {
+      return goToEvent(player, event.nextEventId);
+    }
+  }
+
+  const upcoming = nextEligibleInStage(
+    player.stage,
+    event.id,
+    player.flags,
+  );
+  if (upcoming) {
+    return {
+      ...player,
+      currentEventId: upcoming.id,
+    };
+  }
+
+  const targetStage =
+    event.nextStageAfterComplete ?? getNextStage(player.stage);
+
+  if (!targetStage || targetStage === "RETIRED") {
+    return retirePlayer(player);
+  }
+
+  return enterPlayableStage(player, targetStage);
+}
+
 export function advanceEvent(player: PlayerState): PlayerState {
   if (player.isGameOver || player.stage === "RETIRED") {
     return retirePlayer(player);
@@ -275,25 +437,78 @@ export function advanceEvent(player: PlayerState): PlayerState {
     return advanceStage(player);
   }
 
-  const upcoming = nextEventInStage(player.stage, player.currentEventId);
-  if (upcoming) {
-    return {
-      ...player,
-      currentEventId: upcoming.id,
-    };
-  }
-
-  const targetStage =
-    currentEvent.nextStageAfterComplete ?? getNextStage(player.stage);
-  if (!targetStage || targetStage === "RETIRED") {
-    return retirePlayer(player);
-  }
-
-  return enterPlayableStage(player, targetStage);
+  return advanceFromChoice(player, currentEvent, {
+    id: "__advance__",
+    text: "",
+    effects: {},
+  });
 }
 
 function findChoice(event: GameEvent, choiceId: string): Choice | undefined {
   return event.choices.find((choice) => choice.id === choiceId);
+}
+
+function applyMatchOutcome(
+  player: PlayerState,
+  result: MatchResult,
+  awardResult: AwardResult,
+): PlayerState {
+  return {
+    ...player,
+    wins: player.wins + (result.won ? 1 : 0),
+    losses: player.losses + (result.won ? 0 : 1),
+    matchHistory: [...player.matchHistory, result],
+    draftStock: clamp(
+      player.draftStock + result.draftStockDelta,
+      DRAFT_STOCK_MIN,
+      DRAFT_STOCK_MAX,
+    ),
+    fame: clampMeter(
+      player.fame + result.fameDelta + awardResult.fameDelta,
+    ),
+    stamina: clampMeter(player.stamina + result.staminaDelta),
+    trophies: [...player.trophies, ...awardResult.trophies],
+    awards: [...player.awards, ...awardResult.awards],
+    lastOutcome: { kind: "MATCH", result, awards: awardResult },
+  };
+}
+
+function formatMatchHistoryChoiceText(
+  choice: Choice,
+  result: MatchResult,
+): string {
+  const verdict = result.won ? "胜" : "负";
+  return `${choice.text}｜${verdict} ${result.playerScore}-${result.opponentScore}｜${result.highlight}`;
+}
+
+function applyDraftOutcome(
+  player: PlayerState,
+  draftResult: DraftResult,
+  contractResult: ContractResult,
+): PlayerState {
+  const { contract, fameDelta } = contractResult;
+  return {
+    ...player,
+    draftHistory: [...player.draftHistory, draftResult],
+    contracts: [...player.contracts, contract],
+    team: draftResult.teamName,
+    role: resolveDraftRole(draftResult.tier),
+    money: clampMoney(player.money + contract.signingBonus),
+    fame: clampMeter(player.fame + fameDelta),
+    lastOutcome: {
+      kind: "DRAFT",
+      result: draftResult,
+      contract: contractResult,
+    },
+  };
+}
+
+function formatDraftHistoryChoiceText(
+  choice: Choice,
+  draftResult: DraftResult,
+  contractResult: ContractResult,
+): string {
+  return `${choice.text}｜${draftResult.message}｜${contractResult.summary}`;
 }
 
 export function applyChoice(
@@ -314,21 +529,39 @@ export function applyChoice(
     return player;
   }
 
-  const withEffects = applyEffects(player, choice.effects);
+  let next = applyEffects(player, choice.effects);
+  next = applyChoiceFlags(next, choice);
+  let historyChoiceText = choice.text;
+
+  if (event.eventKind === "MATCH") {
+    const matchResult = resolveMatch(next, event, choice);
+    const awardResult = resolveAwards(next, event, matchResult);
+    next = applyMatchOutcome(next, matchResult, awardResult);
+    historyChoiceText = formatMatchHistoryChoiceText(choice, matchResult);
+  } else if (event.eventKind === "DRAFT") {
+    const draftResult = resolveDraft(next, event, choice);
+    const contractResult = resolveContract(next, draftResult);
+    next = applyDraftOutcome(next, draftResult, contractResult);
+    historyChoiceText = formatDraftHistoryChoiceText(
+      choice,
+      draftResult,
+      contractResult,
+    );
+  }
 
   const historyEntry: CareerHistoryEntry = {
     eventId: event.id,
     stage: event.stage,
     eventTitle: event.title,
     choiceId: choice.id,
-    choiceText: choice.text,
+    choiceText: historyChoiceText,
     timestamp: Date.now(),
   };
 
   const withHistory: PlayerState = {
-    ...withEffects,
-    careerHistory: [...withEffects.careerHistory, historyEntry],
+    ...next,
+    careerHistory: [...next.careerHistory, historyEntry],
   };
 
-  return advanceEvent(withHistory);
+  return advanceFromChoice(withHistory, event, choice);
 }

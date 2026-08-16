@@ -15,6 +15,55 @@ export type EventVisualType =
   | "CELEBRATE"
   | "CHAMPION";
 
+export type EventKind = "STORY" | "MATCH" | "DRAFT" | "CONTRACT";
+
+export type PlayerRole = "BENCH" | "ROTATION" | "STARTER" | "STAR";
+
+export type CareerTier =
+  | "LEGEND"
+  | "SUPERSTAR"
+  | "STAR"
+  | "STARTER"
+  | "ROLE_PLAYER"
+  | "JOURNEYMAN";
+
+export type TrophyId =
+  | "CUBA_CHAMPION"
+  | "CBA_CHAMPION"
+  | "NBA_CHAMPION"
+  | "ASIA_GOLD"
+  | "WORLD_MEDAL";
+
+export type AwardId = "FMVP" | "DPOY_LIKE" | "ALL_STAR_LIKE" | "MVP_LIKE";
+
+export type LeagueId = "CBA" | "NBA";
+
+export type MatchStakes = "REGULAR" | "FINAL" | "PLAYOFF";
+
+export type ChoiceIntent =
+  | "SCORE"
+  | "DEFEND"
+  | "TEAM"
+  | "SAFE"
+  | "RISK"
+  | "DECLARE"
+  | "WAIT";
+
+/** 生涯分叉旗标（由选择 set/clear，用于事件门控） */
+export type CareerFlag =
+  | "SCHOOL_STAR"
+  | "SCHOOL_GRIND"
+  | "DECLARED_EARLY"
+  | "STAYED_CUBA"
+  | "SKIPPED_DRAFT"
+  | "DOMESTIC_FOCUS"
+  | "NBA_BOUND"
+  | "NBA_BUST"
+  | "NT_CALLED"
+  | "EARLY_RETIRE"
+  | "INJURY_PRONE"
+  | "MEDIA_BACKLASH";
+
 export type SkillStat =
   | "shooting"
   | "finishing"
@@ -31,12 +80,32 @@ export type ClampStat =
   | "fame"
   | "zhihuReputation";
 
-export type ChoiceEffects = Partial<Record<ClampStat | "money", number>>;
+export type ChoiceEffects = Partial<
+  Record<ClampStat | "money" | "draftStock", number>
+>;
 
 export interface Choice {
   id: string;
   text: string;
   effects: ChoiceEffects;
+  intent?: ChoiceIntent;
+  nextEventId?: string;
+  nextStage?: CareerStage;
+  setFlags?: CareerFlag[];
+  clearFlags?: CareerFlag[];
+}
+
+export interface MatchConfig {
+  opponentStrength: number;
+  stakes: MatchStakes;
+}
+
+export interface DraftConfig {
+  league: LeagueId;
+}
+
+export interface ContractConfig {
+  league: LeagueId;
 }
 
 export interface GameEvent {
@@ -47,7 +116,14 @@ export interface GameEvent {
   kanShanDialogue: string;
   choices: [Choice, Choice, Choice];
   visualType: EventVisualType;
+  eventKind: EventKind;
+  matchConfig?: MatchConfig;
+  draftConfig?: DraftConfig;
+  contractConfig?: ContractConfig;
   nextStageAfterComplete?: CareerStage;
+  nextEventId?: string;
+  requiresFlags?: CareerFlag[];
+  excludesFlags?: CareerFlag[];
 }
 
 export interface CareerHistoryEntry {
@@ -58,6 +134,97 @@ export interface CareerHistoryEntry {
   choiceText: string;
   timestamp: number;
 }
+
+/** 生涯历史记录列表 */
+export type CareerHistory = CareerHistoryEntry[];
+
+export interface MatchResult {
+  eventId: string;
+  stage: CareerStage;
+  won: boolean;
+  playerScore: number;
+  opponentScore: number;
+  performance: number;
+  stakes: MatchStakes;
+  draftStockDelta: number;
+  fameDelta: number;
+  staminaDelta: number;
+  highlight: string;
+  trophyId?: TrophyId;
+}
+
+export type DraftTier =
+  | "LOTTERY"
+  | "FIRST_ROUND"
+  | "SECOND_ROUND"
+  | "UNDRAFTED";
+
+export interface DraftResult {
+  eventId: string;
+  league: LeagueId;
+  pick: number;
+  tier: DraftTier;
+  teamName: string;
+  draftValue: number;
+  message: string;
+}
+
+export interface Contract {
+  id: string;
+  league: LeagueId;
+  teamName: string;
+  years: number;
+  annualSalary: number;
+  signingBonus: number;
+  signedAtEventId: string;
+}
+
+export interface ContractResult {
+  contract: Contract;
+  summary: string;
+  /** 签约带来的名气增量（由 engine 写入 PlayerState） */
+  fameDelta: number;
+}
+
+export interface Trophy {
+  id: TrophyId;
+  name: string;
+  stage: CareerStage;
+  eventId: string;
+}
+
+export interface Award {
+  id: AwardId;
+  name: string;
+  stage: CareerStage;
+  eventId: string;
+}
+
+export interface AwardResult {
+  trophies: Trophy[];
+  awards: Award[];
+  fameDelta: number;
+}
+
+export type GameOutcome =
+  | {
+      kind: "MATCH";
+      result: MatchResult;
+      awards: AwardResult;
+    }
+  | {
+      kind: "DRAFT";
+      result: DraftResult;
+      contract: ContractResult;
+    }
+  | {
+      kind: "CONTRACT";
+      result: Contract;
+    }
+  | {
+      kind: "STORY";
+      summary: string;
+    };
 
 export interface PlayerState {
   name: string;
@@ -84,11 +251,29 @@ export interface PlayerState {
 
   team: string;
 
-  trophies: string[];
+  trophies: Trophy[];
+  awards: Award[];
 
-  careerHistory: CareerHistoryEntry[];
+  careerHistory: CareerHistory;
 
   currentEventId: string | null;
 
   isGameOver: boolean;
+
+  wins: number;
+  losses: number;
+
+  matchHistory: MatchResult[];
+  draftHistory: DraftResult[];
+  contracts: Contract[];
+
+  draftStock: number;
+  role: PlayerRole;
+
+  lastOutcome: GameOutcome | null;
+
+  careerScore: number;
+  careerTier: CareerTier | null;
+
+  flags: CareerFlag[];
 }

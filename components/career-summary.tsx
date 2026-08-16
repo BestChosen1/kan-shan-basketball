@@ -1,5 +1,16 @@
+"use client";
+
 import Image from "next/image";
-import type { PlayerState } from "@/game";
+import {
+  CAREER_FLAG_LABEL,
+  CAREER_TIER_LABEL,
+  type PlayerState,
+} from "@/game";
+import { CHAMPION_VISUAL_SRC, getStageCharacterSrc } from "@/lib/event-visuals";
+import {
+  UI_AWARD_LABEL,
+  UI_TROPHY_LABEL,
+} from "./game-result-overlay";
 import { getAvatarSrc, KanshanFigure, TIMELINE_LABEL } from "./career-ui";
 
 interface CareerSummaryProps {
@@ -8,12 +19,16 @@ interface CareerSummaryProps {
 }
 
 export function CareerSummary({ player, onRestart }: CareerSummaryProps) {
-  const honors =
-    player.trophies.length > 0
-      ? player.trophies.join(" · ")
-      : player.fame >= 40
-        ? "生涯高光已写入历史"
-        : "暂无奖杯收录";
+  const hasNbaChampion = player.trophies.some(
+    (trophy) => trophy.id === "NBA_CHAMPION",
+  );
+  const heroSrc = hasNbaChampion
+    ? CHAMPION_VISUAL_SRC
+    : getStageCharacterSrc("NBA");
+
+  const tierLabel = player.careerTier
+    ? CAREER_TIER_LABEL[player.careerTier]
+    : "未评定";
 
   const stagesTouched = Array.from(
     new Set(player.careerHistory.map((entry) => TIMELINE_LABEL[entry.stage])),
@@ -38,12 +53,27 @@ export function CareerSummary({ player, onRestart }: CareerSummaryProps) {
               退役 · {player.age} 岁
             </span>
           </div>
-          <div className="relative z-10 mx-auto mt-1 flex h-[220px] w-full max-w-[220px] items-end justify-center sm:h-[260px]">
-            <KanshanFigure
-              stage="RETIRED"
-              priority
-              className="h-full w-auto drop-shadow-[0_16px_28px_rgba(21,42,72,0.2)]"
-            />
+          <div className="relative z-10 mx-auto mt-1 flex h-[220px] w-full max-w-[240px] items-end justify-center sm:h-[280px]">
+            {heroSrc ? (
+              <Image
+                src={heroSrc}
+                alt={
+                  hasNbaChampion
+                    ? "刘看山冠军时刻"
+                    : "刘看山职业篮球生涯"
+                }
+                width={900}
+                height={1200}
+                className="h-full w-auto max-w-full object-contain drop-shadow-[0_16px_28px_rgba(21,42,72,0.2)]"
+                priority
+              />
+            ) : (
+              <KanshanFigure
+                stage="RETIRED"
+                priority
+                className="h-full w-auto drop-shadow-[0_16px_28px_rgba(21,42,72,0.2)]"
+              />
+            )}
           </div>
         </div>
 
@@ -55,9 +85,22 @@ export function CareerSummary({ player, onRestart }: CareerSummaryProps) {
             刘看山的篮球生涯
           </h2>
           <p className="mt-1.5 text-sm text-muted">
-            从 12 岁北极启程，到 {player.age}{" "}
-            岁退役。共经历 {player.careerHistory.length} 个关键时刻。
+            从 12 岁北极启程，到 {player.age} 岁退役。共经历{" "}
+            {player.careerHistory.length} 个关键时刻。
           </p>
+
+          <div className="mt-4 rounded-xl bg-ink px-4 py-3 text-white">
+            <p className="text-[10px] font-semibold tracking-[0.18em] text-orange-soft">
+              CAREER TIER
+            </p>
+            <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
+              <p className="text-2xl font-semibold">{tierLabel}</p>
+              <p className="text-sm tabular-nums text-white/75">
+                {player.careerScore}
+                <span className="text-white/45"> / 1000</span>
+              </p>
+            </div>
+          </div>
 
           <dl className="mt-4 grid gap-2 sm:grid-cols-2">
             <SummaryItem
@@ -66,46 +109,130 @@ export function CareerSummary({ player, onRestart }: CareerSummaryProps) {
               emphasize
             />
             <SummaryItem
+              label="战绩"
+              value={`${player.wins} 胜 · ${player.losses} 负`}
+            />
+            <SummaryItem
               label="生涯阶段"
               value={stagesTouched || TIMELINE_LABEL.RETIRED}
             />
-            <SummaryItem label="球队" value={player.team} />
-            <SummaryItem label="主要荣誉" value={honors} />
             <SummaryItem label="名气" value={String(player.fame)} />
-            <SummaryItem
-              label="知乎声望"
-              value={String(player.zhihuReputation)}
-            />
           </dl>
 
-          <div className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-[#f7fafc] p-3">
-            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-transparent">
-              <Image
-                src={getAvatarSrc("RETIRED")}
-                alt="刘看山"
-                width={197}
-                height={207}
-                className="h-full w-full object-contain"
-              />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-ink">角色档案</p>
-              <p className="mt-0.5 text-xs text-muted">
-                透明立绘 · 北极狐看山
+          {player.flags.length > 0 ? (
+            <div className="mt-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                生涯轨迹标签
               </p>
+              <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                {player.flags.map((flag) => (
+                  <li
+                    key={flag}
+                    className="rounded-full border border-border bg-[#f7fafc] px-2.5 py-1 text-xs font-semibold text-ink"
+                  >
+                    {CAREER_FLAG_LABEL[flag]}
+                  </li>
+                ))}
+              </ul>
             </div>
+          ) : null}
+
+          <HonorList
+            title="奖杯"
+            empty="暂无奖杯"
+            items={player.trophies.map((trophy) => UI_TROPHY_LABEL[trophy.id])}
+          />
+          <HonorList
+            title="个人荣誉"
+            empty="暂无个人荣誉"
+            items={player.awards.map((award) => UI_AWARD_LABEL[award.id])}
+          />
+
+          <div className="mt-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+              选秀记录
+            </p>
+            {player.draftHistory.length === 0 ? (
+              <p className="mt-1 text-sm text-muted">无</p>
+            ) : (
+              <ul className="mt-1.5 space-y-1">
+                {player.draftHistory.map((draft) => (
+                  <li
+                    key={`${draft.eventId}-${draft.pick}`}
+                    className="text-sm text-ink"
+                  >
+                    {draft.league} ·{" "}
+                    {draft.tier === "UNDRAFTED"
+                      ? "落选"
+                      : `第 ${draft.pick} 顺位`}{" "}
+                    · {draft.teamName}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="mt-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+              合同
+            </p>
+            {player.contracts.length === 0 ? (
+              <p className="mt-1 text-sm text-muted">无</p>
+            ) : (
+              <ul className="mt-1.5 space-y-1">
+                {player.contracts.map((contract) => (
+                  <li key={contract.id} className="text-sm text-ink">
+                    {contract.league} · {contract.teamName} · {contract.years}{" "}
+                    年 · 年薪 {contract.annualSalary} · 签字费{" "}
+                    {contract.signingBonus}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <button
             type="button"
             onClick={onRestart}
-            className="mt-4 inline-flex items-center justify-center rounded-xl bg-orange px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-orange/90 active:scale-[0.98]"
+            className="mt-5 inline-flex items-center justify-center rounded-xl bg-orange px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-orange/90 active:scale-[0.98]"
           >
             重新开始
           </button>
         </div>
       </div>
     </section>
+  );
+}
+
+function HonorList({
+  title,
+  empty,
+  items,
+}: {
+  title: string;
+  empty: string;
+  items: string[];
+}) {
+  return (
+    <div className="mt-3">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+        {title}
+      </p>
+      {items.length === 0 ? (
+        <p className="mt-1 text-sm text-muted">{empty}</p>
+      ) : (
+        <ul className="mt-1.5 flex flex-wrap gap-1.5">
+          {items.map((item) => (
+            <li
+              key={item}
+              className="rounded-full border border-border bg-[#f7fafc] px-2.5 py-1 text-xs font-semibold text-ink"
+            >
+              {item}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

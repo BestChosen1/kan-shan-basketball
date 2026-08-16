@@ -4,12 +4,13 @@ import {
   applyChoice,
   calculateOverall,
   CAREER_EVENTS,
-  CAREER_STAGE_ORDER,
   createInitialPlayer,
+  EVENT_KINDS,
   getCurrentEvent,
-  getEventsByStage,
+  INITIAL_DRAFT_STOCK,
   isCareerFinished,
   restartCareer,
+  type EventKind,
   type PlayerState,
 } from "./index.ts";
 
@@ -41,6 +42,25 @@ describe("createInitialPlayer", () => {
     assert.equal(player.age, 12);
     assert.equal(player.overall, calculateOverall(player));
     assert.ok(player.overall >= 45 && player.overall <= 99);
+  });
+
+  it("initializes Step 5A career fields with defaults", () => {
+    const player = createInitialPlayer();
+
+    assert.equal(player.wins, 0);
+    assert.equal(player.losses, 0);
+    assert.deepEqual(player.matchHistory, []);
+    assert.deepEqual(player.draftHistory, []);
+    assert.deepEqual(player.contracts, []);
+    assert.deepEqual(player.trophies, []);
+    assert.deepEqual(player.awards, []);
+    assert.equal(player.draftStock, INITIAL_DRAFT_STOCK);
+    assert.equal(player.draftStock, 20);
+    assert.equal(player.role, "BENCH");
+    assert.equal(player.lastOutcome, null);
+    assert.equal(player.careerScore, 0);
+    assert.equal(player.careerTier, null);
+    assert.deepEqual(player.flags, []);
   });
 });
 
@@ -167,13 +187,15 @@ describe("event and stage progression", () => {
     player = applyChoice(player, "np-first-ball-shoot");
     assert.equal(player.stage, "NORTH_POLE");
     player = applyChoice(player, "np-arctic-physical");
+    assert.equal(player.currentEventId, "np-cold-doubt");
+    player = applyChoice(player, "np-leave-brave");
     assert.equal(player.stage, "SCHOOL");
     assert.equal(player.age, 15);
     assert.equal(player.team, "校园篮球队");
     assert.equal(player.currentEventId, "school-tryout");
   });
 
-  it("enters RETIRED with isGameOver after NATIONAL_TEAM", () => {
+  it("enters RETIRED with isGameOver after a full path", () => {
     const finished = playFullCareer(0);
     assert.equal(finished.stage, "RETIRED");
     assert.equal(finished.isGameOver, true);
@@ -191,13 +213,12 @@ describe("event and stage progression", () => {
     const finished = playFullCareer(1);
     assert.equal(finished.stage, "RETIRED");
     assert.equal(finished.isGameOver, true);
-    assert.equal(finished.careerHistory.length, CAREER_EVENTS.length);
+    assert.ok(finished.careerHistory.length >= 12);
+    assert.ok(finished.careerHistory.length <= 45);
 
     const stages = new Set(finished.careerHistory.map((entry) => entry.stage));
-    for (const stage of CAREER_STAGE_ORDER.slice(0, -1)) {
-      assert.ok(stages.has(stage), `missing history for ${stage}`);
-      assert.ok(getEventsByStage(stage).length > 0);
-    }
+    assert.ok(stages.has("NORTH_POLE"));
+    assert.ok(stages.has("SCHOOL"));
   });
 
   it("restartCareer resets to the beginning", () => {
@@ -220,8 +241,9 @@ describe("event catalog", () => {
     "CHAMPION",
   ]);
 
-  it("has about 20 fixed events with 3 choices each", () => {
-    assert.equal(CAREER_EVENTS.length, 20);
+  it("has 45-60 events with 3 choices each", () => {
+    assert.ok(CAREER_EVENTS.length >= 45);
+    assert.ok(CAREER_EVENTS.length <= 60);
     for (const event of CAREER_EVENTS) {
       assert.equal(event.choices.length, 3);
       assert.ok(event.title.length > 0);
@@ -259,5 +281,491 @@ describe("event catalog", () => {
     const after = applyChoice(before, "np-first-ball-shoot");
     assert.notEqual(after.shooting, before.shooting);
     assert.equal(after.careerHistory.length, 1);
+  });
+
+  it("requires a valid eventKind on every event", () => {
+    const kindSet = new Set<string>(EVENT_KINDS);
+    for (const event of CAREER_EVENTS) {
+      assert.ok(
+        typeof event.eventKind === "string",
+        `missing eventKind on ${event.id}`,
+      );
+      assert.ok(
+        kindSet.has(event.eventKind),
+        `invalid eventKind ${event.eventKind} on ${event.id}`,
+      );
+    }
+  });
+
+  it("assigns expected eventKind for landmark events", () => {
+    const byId = Object.fromEntries(
+      CAREER_EVENTS.map((event) => [event.id, event]),
+    );
+    const expected: Record<string, EventKind> = {
+      "np-first-ball": "STORY",
+      "np-arctic-training": "STORY",
+      "school-tryout": "STORY",
+      "school-first-game": "MATCH",
+      "school-focus": "STORY",
+      "cuba-school-choice": "STORY",
+      "cuba-first-league": "MATCH",
+      "cuba-finals": "MATCH",
+      "cuba-draft-decision": "STORY",
+      "cba-draft": "DRAFT",
+      "cba-first-pro-camp": "STORY",
+      "cba-starting-battle": "STORY",
+      "cba-big-decision": "STORY",
+      "nba-draft": "DRAFT",
+      "nba-summer-league": "MATCH",
+      "nba-regular-season": "MATCH",
+      "nba-playoff-game": "MATCH",
+      "nt-camp": "STORY",
+      "nt-asia": "MATCH",
+      "nt-world-final": "MATCH",
+    };
+
+    for (const [id, kind] of Object.entries(expected)) {
+      assert.equal(byId[id]?.eventKind, kind, id);
+    }
+  });
+
+  it("validates matchConfig and draftConfig shapes when present", () => {
+    const stakes = new Set(["REGULAR", "FINAL", "PLAYOFF"]);
+    const leagues = new Set(["CBA", "NBA"]);
+
+    for (const event of CAREER_EVENTS) {
+      if (event.matchConfig) {
+        assert.equal(typeof event.matchConfig.opponentStrength, "number");
+        assert.ok(event.matchConfig.opponentStrength >= 0);
+        assert.ok(event.matchConfig.opponentStrength <= 99);
+        assert.ok(stakes.has(event.matchConfig.stakes));
+      }
+      if (event.draftConfig) {
+        assert.ok(leagues.has(event.draftConfig.league));
+      }
+      if (event.eventKind === "MATCH") {
+        assert.ok(
+          event.matchConfig,
+          `MATCH event ${event.id} should have matchConfig`,
+        );
+      }
+      if (event.eventKind === "DRAFT") {
+        assert.ok(
+          event.draftConfig,
+          `DRAFT event ${event.id} should have draftConfig`,
+        );
+      }
+    }
+  });
+});
+
+describe("MATCH engine integration", () => {
+  it("updates wins, matchHistory, draftStock, fame, stamina, lastOutcome on MATCH win path", () => {
+    let player = createInitialPlayer();
+    player = applyChoice(player, "np-first-ball-shoot");
+    player = applyChoice(player, "np-arctic-physical");
+    player = applyChoice(player, "np-leave-brave");
+    player = applyChoice(player, "school-tryout-score");
+
+    assert.equal(player.currentEventId, "school-first-game");
+    const before = {
+      wins: player.wins,
+      losses: player.losses,
+      matchCount: player.matchHistory.length,
+      draftStock: player.draftStock,
+      fame: player.fame,
+      stamina: player.stamina,
+    };
+
+    const after = applyChoice(player, "school-first-attack");
+
+    assert.equal(after.matchHistory.length, before.matchCount + 1);
+    assert.ok(after.lastOutcome?.kind === "MATCH");
+    const result = after.lastOutcome.result;
+    const awards = after.lastOutcome.awards;
+    assert.equal(after.wins, before.wins + (result.won ? 1 : 0));
+    assert.equal(after.losses, before.losses + (result.won ? 0 : 1));
+    assert.equal(after.draftStock, before.draftStock + result.draftStockDelta);
+    // choice effects: fame +2, stamina -3；再叠加 match + award fame deltas
+    assert.equal(
+      after.fame,
+      before.fame + 2 + result.fameDelta + awards.fameDelta,
+    );
+    assert.equal(after.stamina, before.stamina - 3 + result.staminaDelta);
+    assert.ok(
+      after.careerHistory.at(-1)?.choiceText.includes(
+        result.won ? "胜" : "负",
+      ),
+    );
+  });
+
+  it("increments losses when MATCH is lost", () => {
+    let player = createInitialPlayer();
+    // Craft a weak player mid-career at a hard MATCH
+    player = {
+      ...player,
+      stage: "NBA",
+      currentEventId: "nba-playoff-game",
+      shooting: 10,
+      finishing: 10,
+      passing: 10,
+      defense: 10,
+      physical: 10,
+      basketballIQ: 10,
+      mental: 10,
+      stamina: 10,
+      overall: 10,
+      role: "BENCH",
+      fame: 20,
+      draftStock: 30,
+      wins: 0,
+      losses: 0,
+      matchHistory: [],
+      flags: ["NBA_BOUND"],
+    };
+
+    const after = applyChoice(player, "nba-po-clutch-shot");
+    assert.equal(after.losses, 1);
+    assert.equal(after.wins, 0);
+    assert.equal(after.matchHistory.length, 1);
+    assert.equal(after.matchHistory[0]?.won, false);
+    assert.equal(after.lastOutcome?.kind, "MATCH");
+  });
+
+  it("still completes a full career to RETIRED with MATCH system", () => {
+    const finished = playFullCareer(0);
+    assert.equal(finished.stage, "RETIRED");
+    assert.equal(finished.isGameOver, true);
+    assert.ok(finished.careerHistory.length >= 12);
+    assert.ok(finished.careerHistory.length <= 45);
+    assert.ok(finished.matchHistory.length >= 1);
+    assert.equal(
+      finished.wins + finished.losses,
+      finished.matchHistory.length,
+    );
+  });
+});
+
+describe("AWARDS and career scoring engine integration", () => {
+  it("writes trophy and award on CUBA finals MATCH win", () => {
+    const player = {
+      ...createInitialPlayer(),
+      stage: "CUBA" as const,
+      currentEventId: "cuba-finals",
+      overall: 90,
+      shooting: 90,
+      finishing: 88,
+      passing: 85,
+      defense: 70,
+      physical: 85,
+      basketballIQ: 90,
+      mental: 90,
+      stamina: 90,
+      role: "STAR" as const,
+      fame: 40,
+      trophies: [],
+      awards: [],
+    };
+
+    const after = applyChoice(player, "cuba-finals-three");
+    assert.ok(after.lastOutcome?.kind === "MATCH");
+    assert.ok(after.lastOutcome.result.won);
+    assert.ok(after.trophies.some((trophy) => trophy.id === "CUBA_CHAMPION"));
+    assert.ok(after.lastOutcome.awards.trophies.length >= 1);
+    assert.ok(after.fame > player.fame);
+  });
+
+  it("writes personal award when thresholds are met", () => {
+    const player = {
+      ...createInitialPlayer(),
+      stage: "NBA" as const,
+      currentEventId: "nba-regular-season",
+      overall: 88,
+      shooting: 90,
+      finishing: 88,
+      passing: 85,
+      defense: 70,
+      physical: 85,
+      basketballIQ: 90,
+      mental: 90,
+      stamina: 90,
+      role: "STAR" as const,
+      fame: 50,
+      trophies: [],
+      awards: [],
+      flags: ["NBA_BOUND"],
+    };
+
+    const after = applyChoice(player, "nba-rs-specialist");
+    assert.ok(after.lastOutcome?.kind === "MATCH");
+    assert.ok(after.lastOutcome.result.performance >= 85);
+    assert.ok(after.awards.some((item) => item.id === "ALL_STAR_LIKE"));
+  });
+
+  it("does not duplicate awards already owned", () => {
+    const player = {
+      ...createInitialPlayer(),
+      stage: "CUBA" as const,
+      currentEventId: "cuba-finals",
+      overall: 92,
+      shooting: 92,
+      finishing: 90,
+      passing: 88,
+      defense: 70,
+      physical: 88,
+      basketballIQ: 92,
+      mental: 92,
+      stamina: 92,
+      role: "STAR" as const,
+      fame: 50,
+      trophies: [],
+      awards: [
+        {
+          id: "FMVP" as const,
+          name: "总决赛 MVP",
+          stage: "CUBA" as const,
+          eventId: "old",
+        },
+      ],
+    };
+
+    const after = applyChoice(player, "cuba-finals-three");
+    const fmvpCount = after.awards.filter((award) => award.id === "FMVP").length;
+    assert.equal(fmvpCount, 1);
+  });
+
+  it("calculates careerScore and careerTier on retirement", () => {
+    const finished = playFullCareer(0);
+    assert.equal(finished.stage, "RETIRED");
+    assert.equal(finished.isGameOver, true);
+    assert.ok(finished.careerScore > 0);
+    assert.ok(finished.careerTier !== null);
+    assert.ok(
+      [
+        "LEGEND",
+        "SUPERSTAR",
+        "STAR",
+        "STARTER",
+        "ROLE_PLAYER",
+        "JOURNEYMAN",
+      ].includes(finished.careerTier!),
+    );
+  });
+
+  it("still reaches RETIRED with awards + career scoring", () => {
+    const finished = playFullCareer(2);
+    assert.equal(finished.stage, "RETIRED");
+    assert.ok(finished.careerHistory.length >= 12);
+    assert.ok(finished.careerHistory.length <= 45);
+    assert.ok(typeof finished.careerScore === "number");
+  });
+});
+
+describe("DRAFT engine integration", () => {
+  it("updates draftHistory, team, role, and lastOutcome on DRAFT", () => {
+    let player = createInitialPlayer();
+    player = {
+      ...player,
+      stage: "CBA",
+      currentEventId: "cba-draft",
+      overall: 88,
+      potential: 90,
+      draftStock: 75,
+      basketballIQ: 80,
+      mental: 80,
+      fame: 50,
+      role: "BENCH",
+      team: "CBA职业球队",
+      draftHistory: [],
+      contracts: [],
+      money: 0,
+    };
+
+    const beforeTeam = player.team;
+    const beforeFame = player.fame;
+    const beforeMoney = player.money;
+    const after = applyChoice(player, "cba-draft-showcase-skill");
+
+    assert.equal(after.draftHistory.length, 1);
+    assert.equal(after.contracts.length, 1);
+    assert.ok(after.lastOutcome?.kind === "DRAFT");
+    const draft = after.lastOutcome.result;
+    const contractResult = after.lastOutcome.contract;
+    assert.equal(after.team, draft.teamName);
+    assert.equal(after.team, contractResult.contract.teamName);
+    assert.notEqual(after.team, beforeTeam);
+    assert.equal(
+      after.role,
+      draft.tier === "LOTTERY" || draft.tier === "FIRST_ROUND"
+        ? "ROTATION"
+        : "BENCH",
+    );
+    // choice effects money +20000, then signingBonus only (not annualSalary)
+    assert.equal(
+      after.money,
+      beforeMoney + 20000 + contractResult.contract.signingBonus,
+    );
+    // choice effects fame +3, then contract fameDelta
+    assert.equal(after.fame, beforeFame + 3 + contractResult.fameDelta);
+    assert.ok(after.careerHistory.at(-1)?.choiceText.includes(draft.message));
+    assert.ok(
+      after.careerHistory.at(-1)?.choiceText.includes(contractResult.summary),
+    );
+  });
+
+  it("adds signingBonus to money but not annualSalary", () => {
+    const player = {
+      ...createInitialPlayer(),
+      stage: "CBA" as const,
+      currentEventId: "cba-draft",
+      overall: 88,
+      potential: 90,
+      draftStock: 75,
+      basketballIQ: 80,
+      mental: 80,
+      fame: 50,
+      money: 1000,
+      contracts: [],
+      draftHistory: [],
+    };
+
+    // Use interview choice: money 12000 in effects
+    const after = applyChoice(player, "cba-draft-interview");
+    assert.ok(after.lastOutcome?.kind === "DRAFT");
+    const { contract } = after.lastOutcome.contract;
+    assert.equal(after.contracts.length, 1);
+    assert.equal(
+      after.money,
+      1000 + 12000 + contract.signingBonus,
+    );
+    assert.notEqual(
+      after.money,
+      1000 + 12000 + contract.signingBonus + contract.annualSalary,
+    );
+  });
+
+  it("sets BENCH role for undrafted outcome and still creates contract", () => {
+    const player = {
+      ...createInitialPlayer(),
+      stage: "NBA" as const,
+      currentEventId: "nba-draft",
+      overall: 35,
+      potential: 35,
+      draftStock: 5,
+      basketballIQ: 20,
+      mental: 20,
+      fame: 0,
+      role: "STARTER" as const,
+      team: "NBA职业球队",
+      draftHistory: [],
+      contracts: [],
+      money: 0,
+      flags: ["NBA_BOUND"],
+    };
+
+    const after = applyChoice(player, "nba-draft-media");
+    assert.equal(after.lastOutcome?.kind, "DRAFT");
+    assert.equal(after.lastOutcome.result.tier, "UNDRAFTED");
+    assert.equal(after.draftHistory[0]?.teamName, "未选中");
+    assert.equal(after.contracts[0]?.teamName, "未选中");
+    assert.equal(after.role, "BENCH");
+    assert.equal(after.contracts.length, 1);
+    assert.equal(after.contracts[0]?.years, 1);
+    assert.ok(after.lastOutcome.contract);
+  });
+
+  it("still reaches RETIRED with draft + contract system enabled", () => {
+    const finished = playFullCareer(1);
+    assert.equal(finished.stage, "RETIRED");
+    assert.equal(finished.isGameOver, true);
+    assert.ok(finished.draftHistory.length >= 1);
+    assert.ok(finished.contracts.length >= 1);
+    assert.equal(finished.draftHistory.length, finished.contracts.length);
+    assert.ok(finished.careerHistory.length >= 12);
+    assert.ok(finished.careerHistory.length <= 45);
+  });
+});
+
+describe("branching career paths", () => {
+  it("school star path reaches cuba-elite-invite", () => {
+    let player = createInitialPlayer();
+    for (const id of [
+      "np-first-ball-shoot",
+      "np-arctic-physical",
+      "np-leave-brave",
+      "school-tryout-score",
+      "school-first-attack",
+      "school-bench-ignore",
+      "school-rival-iso",
+    ]) {
+      player = applyChoice(player, id);
+    }
+    player = applyChoice(player, "school-focus-star");
+    assert.ok(player.flags.includes("SCHOOL_STAR"));
+    assert.equal(player.currentEventId, "cuba-elite-invite");
+    assert.ok(
+      !player.careerHistory.some((entry) => entry.eventId === "cuba-walkon-tryout"),
+    );
+  });
+
+  it("school grind path reaches cuba-walkon-tryout", () => {
+    let player = createInitialPlayer();
+    for (const id of [
+      "np-first-ball-shoot",
+      "np-arctic-physical",
+      "np-leave-brave",
+      "school-tryout-score",
+      "school-first-attack",
+      "school-bench-ignore",
+      "school-rival-iso",
+    ]) {
+      player = applyChoice(player, id);
+    }
+    player = applyChoice(player, "school-focus-grind");
+    assert.ok(player.flags.includes("SCHOOL_GRIND"));
+    assert.equal(player.currentEventId, "cuba-walkon-tryout");
+  });
+
+  it("skip draft flag routes to undrafted camp", () => {
+    const player = {
+      ...createInitialPlayer(),
+      stage: "CUBA" as const,
+      currentEventId: "cuba-draft-decision",
+      flags: [] as PlayerState["flags"],
+    };
+    const after = applyChoice(player, "cuba-draft-skip");
+    assert.ok(after.flags.includes("SKIPPED_DRAFT"));
+    assert.equal(after.currentEventId, "cba-undrafted-camp");
+  });
+
+  it("applies negative choice effects", () => {
+    const before = createInitialPlayer();
+    const after = applyChoice(before, "np-first-ball-quit");
+    assert.ok(after.mental < before.mental);
+    assert.ok(after.potential <= before.potential);
+  });
+
+  it("early retire path still calculates career score", () => {
+    const player = {
+      ...createInitialPlayer(),
+      stage: "CBA" as const,
+      currentEventId: "cba-after-title",
+      flags: ["DOMESTIC_FOCUS"] as PlayerState["flags"],
+      overall: 70,
+      fame: 40,
+    };
+    const after = applyChoice(player, "cba-after-retire-early");
+    assert.equal(after.stage, "RETIRED");
+    assert.equal(after.isGameOver, true);
+    assert.ok(after.careerScore > 0);
+    assert.ok(after.careerTier !== null);
+  });
+
+  it("ambitious path can still reach national team and retire", () => {
+    const finished = playFullCareer(0);
+    assert.equal(finished.stage, "RETIRED");
+    const stages = new Set(finished.careerHistory.map((entry) => entry.stage));
+    assert.ok(stages.has("NBA") || stages.has("NATIONAL_TEAM"));
+    assert.ok(finished.careerTier !== null);
   });
 });

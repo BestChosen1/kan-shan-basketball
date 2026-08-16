@@ -1,33 +1,127 @@
 export type {
+  Award,
+  AwardId,
+  AwardResult,
+  CareerFlag,
+  CareerHistory,
   CareerHistoryEntry,
   CareerStage,
+  CareerTier,
   Choice,
   ChoiceEffects,
+  ChoiceIntent,
+  Contract,
+  ContractConfig,
+  ContractResult,
+  DraftConfig,
+  DraftResult,
+  DraftTier,
+  EventKind,
   EventVisualType,
   GameEvent,
+  GameOutcome,
+  LeagueId,
+  MatchConfig,
+  MatchResult,
+  MatchStakes,
+  PlayerRole,
   PlayerState,
+  Trophy,
+  TrophyId,
 } from "./types.ts";
 
 export {
+  AWARD_IDS,
+  AWARD_NAMES,
+  CAREER_FLAGS,
+  CAREER_FLAG_LABEL,
   CAREER_STAGE_ORDER,
+  CAREER_TIER_LABEL,
+  CAREER_TIERS,
+  CBA_DRAFT_WEIGHTS,
+  CBA_CONTRACT_BY_TIER,
+  CONTRACT_FAME_BY_TIER,
+  DRAFT_INTENT_BONUS,
+  DRAFT_ROLE_BY_TIER,
+  DRAFT_STOCK_MAX,
+  DRAFT_STOCK_MIN,
+  EVENT_KINDS,
+  INITIAL_DRAFT_STOCK,
   INITIAL_PLAYER,
+  INTENT_BONUS,
+  MATCH_PERFORMANCE_WEIGHTS,
+  NBA_CONTRACT_BY_TIER,
+  NBA_DRAFT_WEIGHTS,
+  PLAYER_ROLES,
+  ROLE_BONUS,
   SKILL_GAIN_MULTIPLIER,
+  STAKES_BONUS,
   STAGE_ENTRY_AGE,
   STAGE_LABEL,
   STAGE_TEAM,
+  STAMINA_COST_BY_STAKES,
+  TROPHY_IDS,
+  TROPHY_NAMES,
+  UNDRAFTED_TEAM_NAME,
 } from "./constants.ts";
 
 export { CAREER_EVENTS, getEventById, getEventsByStage } from "./events.ts";
 
 export {
   advanceEvent,
+  advanceFromChoice,
   advanceStage,
   applyChoice,
+  applyChoiceFlags,
   calculateOverall,
   createInitialPlayer,
   getCurrentEvent,
   getNextStage,
   isCareerFinished,
+  isEventEligible,
   isStageComplete,
   restartCareer,
 } from "./engine.ts";
+
+export {
+  buildMatchHighlight,
+  calculateBasePerformance,
+  calculateMatchPerformance,
+  resolveDraftStockDelta,
+  resolveFameDelta,
+  resolveMatch,
+  resolveMatchScores,
+  resolveStaminaDelta,
+} from "./match.ts";
+
+export {
+  buildDraftMessage,
+  calculateDraftValue,
+  resolveDraft,
+  resolveDraftPick,
+  resolveDraftRole,
+  resolveDraftTeamName,
+  resolveDraftTier,
+} from "./draft.ts";
+
+export {
+  buildContractId,
+  buildContractSummary,
+  resolveAnnualSalary,
+  resolveContract,
+  resolveFameSigningBonus,
+  resolveOverallSalaryBonusPercent,
+  resolvePickSalaryBonusPercent,
+} from "./contract.ts";
+
+export { resolveAwards, resolveAwardCandidates, resolveTrophyCandidate } from "./awards.ts";
+
+export {
+  AWARD_SCORE,
+  calculateCareerScore,
+  CAREER_SCORE_MAX,
+  CAREER_SCORE_MIN,
+  CAREER_TIER_THRESHOLDS,
+  resolveCareerTier,
+  TROPHY_SCORE,
+} from "./career.ts";
