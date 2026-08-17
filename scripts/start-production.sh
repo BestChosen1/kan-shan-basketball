@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Render Web Service start entrypoint.
+# Production Web Service start entrypoint (Railway / Render / etc.).
 # Never print DEEPSEEK_API_KEY / ZHIHU_ACCESS_SECRET values.
 
 ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"

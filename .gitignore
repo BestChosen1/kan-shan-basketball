@@ -36,7 +36,7 @@ yarn-error.log*
 .env.*.local
 !.env.example
 
-# Render / Zhihu CLI path file from setup-zhihu-cli.sh (no secrets)
+# Zhihu CLI path file from setup-zhihu-cli.sh (no secrets)
 .zhihu-cli-path
 
 # vercel
