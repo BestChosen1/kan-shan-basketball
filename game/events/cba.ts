@@ -115,7 +115,7 @@ export const CBA_EVENTS: GameEvent[] = [
     stage: "CBA",
     visualType: "DEFENSE",
     eventKind: "STORY",
-    nextEventId: "cba-rookie-wall",
+    nextEventId: "cba-big-decision",
     title: "第一次职业训练",
     description:
       "职业队训练强度、录像分析、营养与恢复一应俱全。你第一次明白：天赋只是入场券。",
@@ -143,7 +143,7 @@ export const CBA_EVENTS: GameEvent[] = [
     stage: "CBA",
     visualType: "NONE",
     eventKind: "MATCH",
-    matchConfig: { opponentStrength: 62, stakes: "REGULAR" },
+    matchConfig: { opponentStrength: 74, stakes: "REGULAR" },
     nextEventId: "cba-starting-battle",
     title: "新秀墙",
     description:
@@ -237,7 +237,7 @@ export const CBA_EVENTS: GameEvent[] = [
     eventKind: "STORY",
     title: "职业生涯第一次重大选择",
     description:
-      "窗口期来临：死磕国内总冠军、赴美试训冲击 NBA，或向国家队教练组表态。",
+      "窗口期来临：死磕国内总冠军、赴美试训冲击 NBA，或先打完赛季再决定下一步——但通往更高舞台的门票，绕不开 NBA。",
     kanShanDialogue: "每条路都好看，每条路都贵。",
     choices: [
       C(
@@ -261,12 +261,11 @@ export const CBA_EVENTS: GameEvent[] = [
         },
       ),
       C(
-        "cba-decision-national",
-        "主动申请国家队观察名单",
-        { mental: 2, defense: 2, zhihuReputation: 3, fame: 2 },
+        "cba-decision-prepare-nba",
+        "打完关键赛季再启程 NBA",
+        { mental: 2, defense: 2, basketballIQ: 2, fame: 2 },
         {
-          setFlags: ["NT_CALLED", "DOMESTIC_FOCUS"],
-          clearFlags: ["NBA_BOUND"],
+          setFlags: ["DOMESTIC_FOCUS", "NBA_BOUND"],
           nextEventId: "cba-title-run",
         },
       ),
@@ -277,7 +276,7 @@ export const CBA_EVENTS: GameEvent[] = [
     stage: "CBA",
     visualType: "SHOOT",
     eventKind: "MATCH",
-    matchConfig: { opponentStrength: 70, stakes: "FINAL" },
+    matchConfig: { opponentStrength: 82, stakes: "FINAL" },
     requiresFlags: ["DOMESTIC_FOCUS"],
     title: "CBA 决赛之夜",
     description:
@@ -312,12 +311,12 @@ export const CBA_EVENTS: GameEvent[] = [
     requiresFlags: ["DOMESTIC_FOCUS"],
     title: "决赛后的分岔",
     description:
-      "无论胜负，俱乐部都问：要不要继续留在国内，还是现在才去试 NBA？国家队也在观望。",
+      "无论胜负，俱乐部都问：现在启程 NBA，还是再观望一年？国家队名额可以等——但 NBA 门票不能一直拖。",
     kanShanDialogue: "故事可以改结局，但不能改已经流出的汗。",
     choices: [
       C(
         "cba-after-nba-late",
-        "晚一步仍要试 NBA",
+        "启程冲击 NBA 选秀/试训",
         { fame: 2, potential: 2, mental: 1 },
         {
           setFlags: ["NBA_BOUND"],
@@ -326,21 +325,23 @@ export const CBA_EVENTS: GameEvent[] = [
         },
       ),
       C(
-        "cba-after-nt",
-        "全力冲国家队",
-        { mental: 3, defense: 1, zhihuReputation: 3 },
+        "cba-after-nba-and-nt",
+        "先去 NBA，顺带争取国家队关注",
+        { mental: 3, defense: 1, zhihuReputation: 3, fame: 2 },
         {
-          setFlags: ["NT_CALLED"],
-          nextStage: "NATIONAL_TEAM",
+          setFlags: ["NBA_BOUND", "NT_CALLED"],
+          clearFlags: ["DOMESTIC_FOCUS"],
+          nextEventId: "nba-draft",
         },
       ),
       C(
-        "cba-after-retire-early",
-        "身体亮红灯，考虑退役",
-        { mental: -3, physical: -2, stamina: -2 },
+        "cba-after-nba-risk",
+        "带伤也要去试训",
+        { fame: 3, physical: -2, stamina: -2, mental: 1 },
         {
-          setFlags: ["EARLY_RETIRE"],
-          nextStage: "RETIRED",
+          setFlags: ["NBA_BOUND", "INJURY_PRONE"],
+          clearFlags: ["DOMESTIC_FOCUS"],
+          nextEventId: "nba-draft",
         },
       ),
     ],
@@ -381,7 +382,7 @@ export const CBA_EVENTS: GameEvent[] = [
     visualType: "DEFENSE",
     eventKind: "MATCH",
     requiresFlags: ["NBA_BUST"],
-    matchConfig: { opponentStrength: 64, stakes: "REGULAR" },
+    matchConfig: { opponentStrength: 76, stakes: "REGULAR" },
     title: "回归首秀",
     description:
       "国内媒体架好长枪短炮。你要在嘘声或掌声里重新介绍自己。",
@@ -389,15 +390,25 @@ export const CBA_EVENTS: GameEvent[] = [
     choices: [
       C(
         "cba-bust-m-score",
-        "用得分回应质疑",
+        "用得分回应质疑，争取二次赴美",
         { shooting: 3, fame: 3, stamina: -4 },
-        { intent: "SCORE", nextStage: "NATIONAL_TEAM", setFlags: ["NT_CALLED"] },
+        {
+          intent: "SCORE",
+          setFlags: ["NBA_BOUND"],
+          clearFlags: ["NBA_BUST"],
+          nextEventId: "nba-season-tipoff",
+        },
       ),
       C(
         "cba-bust-m-def",
-        "用防守赢尊重",
+        "用防守赢尊重，再冲 NBA 合同",
         { defense: 4, physical: 1, fame: 2 },
-        { intent: "DEFEND", nextStage: "NATIONAL_TEAM", setFlags: ["NT_CALLED"] },
+        {
+          intent: "DEFEND",
+          setFlags: ["NBA_BOUND"],
+          clearFlags: ["NBA_BUST"],
+          nextEventId: "nba-season-tipoff",
+        },
       ),
       C(
         "cba-bust-m-quit",

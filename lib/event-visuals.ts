@@ -14,6 +14,8 @@ export const STAGE_CHARACTER_SRC: Partial<Record<CareerStage, string>> = {
   CBA: "/assets/kanshan/web/characters/kanshan-basketball.webp",
   NBA: "/assets/kanshan/web/characters/kanshan-basketball.webp",
   NATIONAL_TEAM: "/assets/kanshan/web/characters/kanshan-national-team.webp",
+  /** 退役结算档案：使用普通篮球服立绘，不用原始头像 */
+  RETIRED: "/assets/kanshan/web/characters/kanshan-basketball.webp",
 };
 
 export const CHAMPION_VISUAL_SRC =

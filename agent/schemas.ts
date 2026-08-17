@@ -106,6 +106,109 @@ export const careerAgentApiErrorSchema = z.object({
 export type CareerAgentApiSuccess = z.infer<typeof careerAgentApiSuccessSchema>;
 export type CareerAgentApiError = z.infer<typeof careerAgentApiErrorSchema>;
 
+/** —— Career Template Agent（生涯模版） —— */
+
+export const careerTemplateHistoryEntrySchema = z
+  .object({
+    eventId: z.string(),
+    stage: z.string(),
+    eventTitle: z.string(),
+    choiceId: z.string(),
+    choiceText: z.string(),
+  })
+  .strict();
+
+export const careerTemplatePlayerSchema = z
+  .object({
+    name: z.string().min(1),
+    age: z.number().int(),
+    team: z.string(),
+    overall: z.number(),
+    role: z.string(),
+    nbaSeason: z.number().int().min(0),
+    shooting: z.number(),
+    finishing: z.number(),
+    passing: z.number(),
+    defense: z.number(),
+    physical: z.number(),
+    basketballIQ: z.number(),
+    stamina: z.number(),
+    mental: z.number(),
+    fame: z.number(),
+    wins: z.number().int(),
+    losses: z.number().int(),
+    careerScore: z.number(),
+    careerTier: z.string().nullable(),
+    flags: z.array(z.string()),
+    careerHistory: z.array(careerTemplateHistoryEntrySchema).max(100),
+  })
+  .strict();
+
+export const careerTemplateApiRequestSchema = z
+  .object({
+    player: careerTemplatePlayerSchema,
+  })
+  .strict();
+
+export type CareerTemplateApiRequest = z.infer<
+  typeof careerTemplateApiRequestSchema
+>;
+
+export const careerTemplateCommentSchema = z.object({
+  title: z.string(),
+  author: z.string().nullable(),
+  excerpt: z.string(),
+  url: z.string().url(),
+});
+
+export const careerTemplateOutputSchema = z.object({
+  status: z.enum(["SUCCESS", "FALLBACK", "UNAVAILABLE"]),
+  playerName: z.string().min(1).max(40),
+  league: z.enum(["NBA", "CBA", "OTHER"]),
+  teamHint: z.string().max(40),
+  rationale: z.string().max(160),
+  profileSummary: z.string().max(200),
+  playstyles: z.array(z.string()).max(6),
+  temperaments: z.array(z.string()).max(6),
+  searchQuery: z.string().nullable(),
+  commentQuery: z.string().nullable(),
+  comments: z.array(careerTemplateCommentSchema).max(3),
+  source: z.enum(["zhihu+model", "zhihu", "fallback"]),
+});
+
+export type CareerTemplateOutput = z.infer<typeof careerTemplateOutputSchema>;
+
+export const careerTemplateApiSuccessSchema = z.object({
+  ok: z.literal(true),
+  data: careerTemplateOutputSchema,
+});
+
+export const careerTemplateApiErrorSchema = z.object({
+  ok: z.literal(false),
+  error: z.object({
+    code: careerAgentApiErrorCodeSchema,
+    message: z.string(),
+  }),
+});
+
+export type CareerTemplateApiSuccess = z.infer<
+  typeof careerTemplateApiSuccessSchema
+>;
+export type CareerTemplateApiError = z.infer<
+  typeof careerTemplateApiErrorSchema
+>;
+
+export const careerTemplateModelPickSchema = z.object({
+  playerName: z.string().min(1).max(40),
+  league: z.enum(["NBA", "CBA", "OTHER"]).default("NBA"),
+  teamHint: z.string().max(40).default(""),
+  rationale: z.string().min(1).max(160),
+});
+
+export type CareerTemplateModelPick = z.infer<
+  typeof careerTemplateModelPickSchema
+>;
+
 export const SEARCH_ZHIHU_TOOL_NAME = "search_zhihu" as const;
 
 /** OpenAI-compatible tool definition for DeepSeek. */

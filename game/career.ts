@@ -93,6 +93,12 @@ export function calculateCareerScore(player: PlayerState): number {
   if (hasCubaCbaNbaJourney(player)) {
     careerAchievementBonus += 30;
   }
+  if (player.nbaSeason >= 3) {
+    careerAchievementBonus += 20;
+  }
+  if (player.nbaSeason >= 5) {
+    careerAchievementBonus += 25;
+  }
 
   const raw =
     abilityScore +

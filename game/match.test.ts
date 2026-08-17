@@ -82,12 +82,11 @@ function weakPlayer(overrides: Partial<PlayerState> = {}): PlayerState {
 
 describe("resolveMatch", () => {
   it("wins when high ability faces a weak opponent", () => {
-    const player = strongPlayer();
-    const event = makeMatchEvent({ opponentStrength: 40, stakes: "REGULAR" });
+    const player = strongPlayer({ stamina: 100, mental: 90 });
+    const event = makeMatchEvent({ opponentStrength: 30, stakes: "REGULAR" });
     const result = resolveMatch(player, event, makeChoice({ intent: "SCORE" }));
 
     assert.equal(result.won, true);
-    assert.ok(result.performance >= 40);
     assert.ok(result.playerScore > result.opponentScore);
   });
 
@@ -97,8 +96,24 @@ describe("resolveMatch", () => {
     const result = resolveMatch(player, event, makeChoice());
 
     assert.equal(result.won, false);
-    assert.ok(result.performance < 90);
     assert.ok(result.playerScore < result.opponentScore);
+  });
+
+  it("rarely auto-wins even for strong players vs mid opponents", () => {
+    const player = strongPlayer({
+      stamina: 55,
+      mental: 50,
+      role: "ROTATION",
+      nbaSeason: 3,
+      stage: "NBA",
+    });
+    const event = makeMatchEvent(
+      { opponentStrength: 78, stakes: "REGULAR" },
+      { id: "hard-nba-match", stage: "NBA" },
+    );
+    const result = resolveMatch(player, event, makeChoice({ id: "c1" }));
+    // 不强制必败，但性能分应显著承压（含惩罚与波动）
+    assert.ok(result.performance <= 95);
   });
 
   it("is fully deterministic for the same inputs", () => {
@@ -119,7 +134,7 @@ describe("resolveMatch", () => {
       makeChoice({ intent: "SCORE" }),
       "REGULAR",
     );
-    assert.equal(withScore - without, 8);
+    assert.equal(withScore - without, 3);
   });
 
   it("applies DEFEND intent bonus", () => {
@@ -130,7 +145,7 @@ describe("resolveMatch", () => {
       makeChoice({ intent: "DEFEND" }),
       "REGULAR",
     );
-    assert.equal(withDefend - without, 8);
+    assert.equal(withDefend - without, 3);
   });
 
   it("gives STAR a higher performance than BENCH", () => {

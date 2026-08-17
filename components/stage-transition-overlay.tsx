@@ -29,22 +29,22 @@ export function StageTransitionOverlay({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f1b2d]/45 px-3 backdrop-blur-[2px] sm:px-4">
       <div className="animate-stage-in magazine-panel w-full max-w-md overflow-hidden rounded-3xl text-center">
-        <div className="relative mx-auto mt-6 flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border border-border bg-transparent sm:mt-8">
+        <div className="relative mx-auto mt-6 h-28 w-28 overflow-hidden rounded-full border border-border bg-snow sm:mt-8">
           {stagePortrait ? (
             <Image
               src={stagePortrait}
               alt=""
-              width={200}
-              height={260}
-              className="h-full w-full object-contain p-1"
+              fill
+              sizes="112px"
+              className="object-cover object-[50%_18%]"
             />
           ) : (
             <Image
               src={avatarSrc}
               alt="刘看山"
-              width={197}
-              height={208}
-              className="h-full w-full object-contain p-2"
+              width={256}
+              height={256}
+              className="h-full w-full object-cover object-center"
             />
           )}
         </div>

@@ -138,8 +138,8 @@ export const CUBA_EVENTS: GameEvent[] = [
     stage: "CUBA",
     visualType: "SHOOT",
     eventKind: "MATCH",
-    matchConfig: { opponentStrength: 48, stakes: "REGULAR" },
-    nextEventId: "cuba-midseason-slump",
+    matchConfig: { opponentStrength: 62, stakes: "REGULAR" },
+    nextEventId: "cuba-finals",
     title: "第一次大学联赛",
     description:
       "CUBA 分区赛开打。强度远超高中：挡拆质量、轮转速度、体能消耗都上了一个台阶。",
@@ -229,7 +229,7 @@ export const CUBA_EVENTS: GameEvent[] = [
     stage: "CUBA",
     visualType: "SHOOT",
     eventKind: "MATCH",
-    matchConfig: { opponentStrength: 58, stakes: "FINAL" },
+    matchConfig: { opponentStrength: 72, stakes: "FINAL" },
     nextEventId: "cuba-draft-decision",
     title: "决赛关键时刻",
     description:
@@ -263,17 +263,17 @@ export const CUBA_EVENTS: GameEvent[] = [
     eventKind: "STORY",
     title: "是否参加职业选秀",
     description:
-      "CUBA 赛季结束。经纪人、教练、家人意见不一：申报 CBA 选秀，再读一年，还是先就业放弃冲击？",
+      "CUBA 赛季结束。经纪人、教练、家人意见不一：申报 CBA、再读一年，还是跳过 CBA 直接试训 NBA？",
     kanShanDialogue: "职业是目标，但时机也对。",
     choices: [
       C(
         "cuba-draft-declare",
-        "立刻申报选秀冲击职业",
+        "立刻申报 CBA 选秀",
         { fame: 4, mental: 2, potential: 1, money: 5000, draftStock: 5 },
         {
           intent: "DECLARE",
           setFlags: ["DECLARED_EARLY"],
-          clearFlags: ["STAYED_CUBA", "SKIPPED_DRAFT"],
+          clearFlags: ["STAYED_CUBA", "SKIPPED_DRAFT", "SKIPPED_CBA"],
           nextEventId: "cba-draft",
         },
       ),
@@ -289,13 +289,13 @@ export const CUBA_EVENTS: GameEvent[] = [
         },
       ),
       C(
-        "cuba-draft-skip",
-        "放弃选秀，另寻出路",
-        { mental: -2, fame: -3, draftStock: -10, money: 2000 },
+        "cuba-draft-nba",
+        "跳过 CBA，直接冲击 NBA 选秀",
+        { fame: 3, potential: 3, mental: 2, money: -3000, draftStock: 3 },
         {
-          setFlags: ["SKIPPED_DRAFT", "DOMESTIC_FOCUS"],
-          clearFlags: ["DECLARED_EARLY", "NBA_BOUND"],
-          nextEventId: "cba-undrafted-camp",
+          setFlags: ["NBA_BOUND", "SKIPPED_CBA"],
+          clearFlags: ["DECLARED_EARLY", "STAYED_CUBA", "DOMESTIC_FOCUS", "SKIPPED_DRAFT"],
+          nextEventId: "nba-draft",
         },
       ),
     ],
@@ -335,7 +335,7 @@ export const CUBA_EVENTS: GameEvent[] = [
     visualType: "SHOOT",
     eventKind: "MATCH",
     requiresFlags: ["STAYED_CUBA"],
-    matchConfig: { opponentStrength: 55, stakes: "PLAYOFF" },
+    matchConfig: { opponentStrength: 70, stakes: "PLAYOFF" },
     nextStageAfterComplete: "CBA",
     title: "加时赛季关键战",
     description:

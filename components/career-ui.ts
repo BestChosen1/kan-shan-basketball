@@ -1,5 +1,5 @@
-import type { CareerStage, PlayerState } from "@/game";
-import { SKILL_GAIN_MULTIPLIER } from "@/game";
+import type { CareerStage, NbaArcPhase, PlayerState } from "@/game";
+import { NBA_ARC_PHASE_LABEL, resolveNbaArcPhase, SKILL_GAIN_MULTIPLIER } from "@/game";
 
 export {
   getAvatarSrc,
@@ -19,6 +19,19 @@ export const TIMELINE_LABEL: Record<CareerStage, string> = {
   NATIONAL_TEAM: "国家队",
   RETIRED: "退役",
 };
+
+export { NBA_ARC_PHASE_LABEL };
+
+export function getNbaArcLabel(player: PlayerState): string | null {
+  if (player.stage !== "NBA" && player.stage !== "RETIRED") {
+    return null;
+  }
+  if (player.nbaSeason < 1) {
+    return null;
+  }
+  const phase: NbaArcPhase = resolveNbaArcPhase(player);
+  return NBA_ARC_PHASE_LABEL[phase];
+}
 
 export const SKILL_GROUPS = [
   {
@@ -181,10 +194,25 @@ export function getStageTransitionCopy(
       title: "国家队",
       subtitle: "红衣加身，代表中国出战",
     },
+    "SCHOOL->NBA": {
+      eyebrow: "生涯捷径",
+      title: "NBA",
+      subtitle: "跳过大学联赛，直接冲击世界最高舞台",
+    },
+    "CUBA->NBA": {
+      eyebrow: "生涯跃迁",
+      title: "NBA",
+      subtitle: "从 CUBA 直通选秀大厅",
+    },
     "NATIONAL_TEAM->RETIRED": {
       eyebrow: "生涯落幕",
       title: "退役",
       subtitle: "一段从冰原到世界之巅的旅程完成了",
+    },
+    "NBA->RETIRED": {
+      eyebrow: "生涯落幕",
+      title: "退役",
+      subtitle: "看山卸下球衣，故事进入终章",
     },
   };
 

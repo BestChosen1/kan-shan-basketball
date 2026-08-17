@@ -1,17 +1,19 @@
 import Image from "next/image";
 import type { CareerStage } from "@/game";
 
-/** 彩色透明四视图拼图（前→左→右→后），仅裁切「前」视图用于展示 */
+/** 彩色透明四视图拼图（前→左→右→后），仅作角色参考 */
 export const KANSHAN_SHEETS = {
   standard: "/assets/kanshan/raw/png/刘看山四视图.png",
   scarf: "/assets/kanshan/raw/png/刘看山围脖四视图.png",
 } as const;
 
 export const KANSHAN_ASSETS = {
-  /** 头像：透明单帧 */
-  avatar: "/assets/kanshan/processed/standard/kanshan-front.png",
-  avatarScarf: "/assets/kanshan/processed/scarf/kanshan-front.png",
-  /** 不再使用白底 JPG / 四视图档案条 */
+  /** 圆形头像：正方形透明底，按白身躯光学居中 */
+  avatar: "/assets/kanshan/web/kanshan-avatar.png",
+  avatarScarf: "/assets/kanshan/web/kanshan-avatar-scarf.png",
+  /** 档案大立绘：透明正面单帧 */
+  figure: "/assets/kanshan/processed/standard/kanshan-front.png",
+  figureScarf: "/assets/kanshan/processed/scarf/kanshan-front.png",
   hero: KANSHAN_SHEETS.standard,
   reference: KANSHAN_SHEETS.standard,
 } as const;
@@ -40,7 +42,7 @@ interface KanshanFigureProps {
 }
 
 /**
- * 从透明四视图 PNG 裁切「正面」一格并放大显示，避免白底 JPG。
+ * 使用已居中的透明正面单帧，避免四视图裁切导致的偏左。
  */
 export function KanshanFigure({
   stage = "CUBA",
@@ -49,25 +51,27 @@ export function KanshanFigure({
   priority = false,
   alt = "刘看山",
 }: KanshanFigureProps) {
-  const sheet =
+  const src =
     variant === "scarf"
-      ? KANSHAN_SHEETS.scarf
+      ? KANSHAN_ASSETS.figureScarf
       : variant === "standard"
-        ? KANSHAN_SHEETS.standard
-        : getHeroSheet(stage);
+        ? KANSHAN_ASSETS.figure
+        : stage === "NORTH_POLE" || stage === "SCHOOL"
+          ? KANSHAN_ASSETS.figureScarf
+          : KANSHAN_ASSETS.figure;
 
   return (
     <div
       className={`relative overflow-hidden ${className}`}
-      style={{ aspectRatio: "197 / 208" }}
+      style={{ aspectRatio: "1 / 1" }}
     >
       <Image
-        src={sheet}
+        src={src}
         alt={alt}
-        width={787}
-        height={208}
+        width={256}
+        height={256}
         priority={priority}
-        className="absolute left-0 top-0 h-full w-auto max-w-none select-none"
+        className="h-full w-full select-none object-contain object-center"
         sizes="(max-width: 768px) 50vw, 280px"
       />
     </div>

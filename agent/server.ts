@@ -5,6 +5,7 @@
 import "server-only";
 
 export { CareerAgent } from "./career-agent.ts";
+export { CareerTemplateAgent } from "./career-template-agent.ts";
 export { getDeepSeekConfig } from "./deepseek.ts";
 export {
   getZhihuCliPath,
@@ -14,3 +15,4 @@ export type {
   CareerAgentContext,
   CareerAgentOutput,
 } from "./types.ts";
+export type { CareerTemplateOutput } from "./schemas.ts";

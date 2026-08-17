@@ -19,6 +19,15 @@ export type EventKind = "STORY" | "MATCH" | "DRAFT" | "CONTRACT";
 
 export type PlayerRole = "BENCH" | "ROTATION" | "STARTER" | "STAR";
 
+/** NBA 生涯弧光阶段（由年龄 + 综合评分计算） */
+export type NbaArcPhase =
+  | "ROOKIE"
+  | "ROTATION"
+  | "STARTER"
+  | "ALL_STAR"
+  | "SUPERSTAR"
+  | "VETERAN";
+
 export type CareerTier =
   | "LEGEND"
   | "SUPERSTAR"
@@ -56,10 +65,13 @@ export type CareerFlag =
   | "DECLARED_EARLY"
   | "STAYED_CUBA"
   | "SKIPPED_DRAFT"
+  | "SKIPPED_CUBA"
+  | "SKIPPED_CBA"
   | "DOMESTIC_FOCUS"
   | "NBA_BOUND"
   | "NBA_BUST"
   | "NT_CALLED"
+  | "NT_DONE"
   | "EARLY_RETIRE"
   | "INJURY_PRONE"
   | "MEDIA_BACKLASH";
@@ -93,6 +105,8 @@ export interface Choice {
   nextStage?: CareerStage;
   setFlags?: CareerFlag[];
   clearFlags?: CareerFlag[];
+  /** NBA 休赛期续约下一季：年龄 +1，nbaSeason +1 */
+  advanceNbaSeason?: boolean;
 }
 
 export interface MatchConfig {
@@ -276,4 +290,7 @@ export interface PlayerState {
   careerTier: CareerTier | null;
 
   flags: CareerFlag[];
+
+  /** 已完成 / 当前所处的 NBA 赛季数；0 表示尚未进入 NBA */
+  nbaSeason: number;
 }

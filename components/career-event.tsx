@@ -68,9 +68,9 @@ export function CareerEvent({
                 <Image
                   src={getAvatarSrc(stage)}
                   alt="刘看山"
-                  width={197}
-                  height={208}
-                  className="h-full w-full object-contain p-0.5"
+                  width={256}
+                  height={256}
+                  className="h-full w-full object-cover object-center"
                 />
               </div>
               <div className="relative min-w-0 flex-1 rounded-xl rounded-tl-md border border-border bg-[#f4f8fc] px-3 py-2">

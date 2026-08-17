@@ -54,10 +54,13 @@ export const CAREER_FLAGS: readonly CareerFlag[] = [
   "DECLARED_EARLY",
   "STAYED_CUBA",
   "SKIPPED_DRAFT",
+  "SKIPPED_CUBA",
+  "SKIPPED_CBA",
   "DOMESTIC_FOCUS",
   "NBA_BOUND",
   "NBA_BUST",
   "NT_CALLED",
+  "NT_DONE",
   "EARLY_RETIRE",
   "INJURY_PRONE",
   "MEDIA_BACKLASH",
@@ -69,10 +72,13 @@ export const CAREER_FLAG_LABEL: Record<CareerFlag, string> = {
   DECLARED_EARLY: "提早申报",
   STAYED_CUBA: "再留 CUBA",
   SKIPPED_DRAFT: "放弃选秀冲击",
+  SKIPPED_CUBA: "跳过 CUBA",
+  SKIPPED_CBA: "跳过 CBA",
   DOMESTIC_FOCUS: "深耕国内",
   NBA_BOUND: "冲击 NBA",
   NBA_BUST: "海外碰壁",
   NT_CALLED: "国家队征召",
+  NT_DONE: "已完成国家队窗口",
   EARLY_RETIRE: "提前退役轨迹",
   INJURY_PRONE: "伤病阴云",
   MEDIA_BACKLASH: "舆论反噬",
@@ -161,20 +167,20 @@ export const MATCH_PERFORMANCE_WEIGHTS = {
 } as const;
 
 export const INTENT_BONUS: Record<ChoiceIntent, number> = {
-  SCORE: 8,
-  DEFEND: 8,
-  TEAM: 5,
-  SAFE: 2,
-  RISK: 6,
-  DECLARE: 4,
+  SCORE: 3,
+  DEFEND: 3,
+  TEAM: 2,
+  SAFE: 0,
+  RISK: 1,
+  DECLARE: 1,
   WAIT: 0,
 };
 
 export const ROLE_BONUS: Record<PlayerRole, number> = {
-  BENCH: -4,
+  BENCH: -3,
   ROTATION: 0,
   STARTER: 3,
-  STAR: 6,
+  STAR: 7,
 };
 
 export const STAKES_BONUS: Record<MatchStakes, number> = {
@@ -308,12 +314,23 @@ export const STAGE_ENTRY_AGE: Record<CareerStage, number> = {
   RETIRED: 33,
 };
 
-/** 选择带来的正向技能收益放大（改善 Demo 成长手感） */
-export const SKILL_GAIN_MULTIPLIER = 2.5;
+/** 选择带来的正向技能收益放大（略加快成长，提升中期体验） */
+export const SKILL_GAIN_MULTIPLIER = 1.4;
 
 /** 每升一阶段，六维技能额外提升 */
-export const STAGE_ADVANCE_SKILL_BONUS = 4;
+export const STAGE_ADVANCE_SKILL_BONUS = 3;
 
+/** NBA 可模拟的最大赛季数（休赛期续约上限） */
+export const MAX_NBA_SEASONS = 12;
+
+/** 比赛：需要高出对手多少点表现才算赢（温和阈值，避免极端连败） */
+export const MATCH_WIN_MARGIN = 2;
+
+/** 体力不足时的表现惩罚：每缺口 stamina 点换算 */
+export const MATCH_STAMINA_PENALTY_DIV = 12;
+
+/** NBA 每多一个赛季，对手强度额外抬升 */
+export const MATCH_NBA_SEASON_OPPONENT_SCALE = 0.35;
 export const INITIAL_PLAYER = {
   name: "刘看山",
   age: STAGE_ENTRY_AGE.NORTH_POLE,
@@ -336,4 +353,5 @@ export const INITIAL_PLAYER = {
   draftStock: INITIAL_DRAFT_STOCK,
   role: "BENCH" as const,
   careerScore: 0,
+  nbaSeason: 0,
 };

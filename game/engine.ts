@@ -3,6 +3,7 @@ import {
   DRAFT_STOCK_MAX,
   DRAFT_STOCK_MIN,
   INITIAL_PLAYER,
+  MAX_NBA_SEASONS,
   METER_MAX,
   METER_MIN,
   MONEY_MIN,
@@ -22,6 +23,11 @@ import { resolveContract } from "./contract.ts";
 import { getEventById, getEventsByStage } from "./events.ts";
 import { resolveDraft, resolveDraftRole } from "./draft.ts";
 import { resolveMatch } from "./match.ts";
+import {
+  resolveNbaArcPhase,
+  resolveNbaArcSentinel,
+  roleFromNbaArcPhase,
+} from "./nba-arc.ts";
 import type {
   AwardResult,
   CareerFlag,
@@ -175,12 +181,31 @@ function withStageIdentity(
   player: PlayerState,
   stage: CareerStage,
 ): PlayerState {
+  const fromIndex = getStageIndex(player.stage);
+  const toIndex = getStageIndex(stage);
+  const advancing = toIndex > fromIndex;
   return {
     ...player,
     stage,
     team: STAGE_TEAM[stage],
-    age: STAGE_ENTRY_AGE[stage],
+    // 前进到新阶段时抬到入门年龄；回退（如国家队→NBA）保留当前年龄
+    age: advancing
+      ? Math.max(player.age, STAGE_ENTRY_AGE[stage])
+      : player.age,
   };
+}
+
+function enterStageState(
+  player: PlayerState,
+  stage: CareerStage,
+): PlayerState {
+  const fromIndex = getStageIndex(player.stage);
+  const toIndex = getStageIndex(stage);
+  const advancing = toIndex > fromIndex;
+  const withIdentity = withStageIdentity(player, stage);
+  return advancing
+    ? applyStageAdvanceBonus(withIdentity)
+    : withIdentity;
 }
 
 function getStageIndex(stage: CareerStage): number {
@@ -238,26 +263,35 @@ function nextEligibleInStage(
 }
 
 function goToEvent(player: PlayerState, eventId: string): PlayerState {
-  const target = getEventById(eventId);
+  const resolvedId = resolveNbaArcSentinel(eventId, player) ?? eventId;
+  const target = getEventById(resolvedId);
   if (!target) {
     return retirePlayer(player);
   }
 
   if (target.stage === player.stage) {
-    return {
+    const sameStage: PlayerState = {
       ...player,
       currentEventId: target.id,
       isGameOver: false,
     };
+    if (target.stage === "NBA" && sameStage.nbaSeason < 1) {
+      return { ...sameStage, nbaSeason: 1 };
+    }
+    return sameStage;
   }
 
-  const withIdentity = withStageIdentity(player, target.stage);
-  const withBonus = applyStageAdvanceBonus(withIdentity);
-  return {
-    ...withBonus,
+  const enteredBase = enterStageState(player, target.stage);
+  const entered: PlayerState = {
+    ...enteredBase,
     currentEventId: target.id,
     isGameOver: false,
+    nbaSeason:
+      target.stage === "NBA"
+        ? Math.max(1, enteredBase.nbaSeason || 0)
+        : enteredBase.nbaSeason,
   };
+  return entered;
 }
 
 export function createInitialPlayer(): PlayerState {
@@ -296,6 +330,7 @@ export function createInitialPlayer(): PlayerState {
     careerScore: INITIAL_PLAYER.careerScore,
     careerTier: null,
     flags: [],
+    nbaSeason: INITIAL_PLAYER.nbaSeason,
   };
 
   return withRecalculatedOverall(base);
@@ -313,7 +348,65 @@ export function getCurrentEvent(player: PlayerState): GameEvent | null {
   ) {
     return null;
   }
-  return getEventById(player.currentEventId) ?? null;
+  const event = getEventById(player.currentEventId);
+  if (!event) {
+    return null;
+  }
+  return customizeEventForPlayer(player, event);
+}
+
+function customizeEventForPlayer(
+  player: PlayerState,
+  event: GameEvent,
+): GameEvent {
+  if (event.id !== "nba-offseason") {
+    return event;
+  }
+
+  const [continueChoice, nationalChoice, retireChoice] = event.choices;
+  const atCap = player.nbaSeason >= MAX_NBA_SEASONS;
+  const ntDone = player.flags.includes("NT_DONE");
+
+  if (atCap) {
+    const capRetire: Choice = {
+      id: "nba-off-cap-retire",
+      text: "身体到极限，宣布退役",
+      effects: { mental: 1, fame: 2 },
+      nextStage: "RETIRED",
+    };
+    const second: Choice = ntDone
+      ? {
+          id: "nba-off-cap-reflect",
+          text: "再想想（仍须做出退役决定）",
+          effects: { mental: 1, stamina: 1 },
+          nextEventId: "nba-offseason",
+        }
+      : nationalChoice;
+    return {
+      ...event,
+      description:
+        "漫长的 NBA 征途已触及长度上限。你可以接受国家队窗口，或正式退役——再战一季已不再现实。",
+      choices: [capRetire, second, retireChoice],
+    };
+  }
+
+  if (ntDone) {
+    return {
+      ...event,
+      choices: [
+        continueChoice,
+        {
+          id: "nba-off-nt-done",
+          text: "本窗口已完成国家队征召",
+          effects: { mental: 1 },
+          nextEventId: "nba-offseason",
+        },
+        retireChoice,
+      ],
+    };
+  }
+
+  return event;
 }
 
 export function isCareerFinished(player: PlayerState): boolean {
@@ -342,8 +435,7 @@ function enterPlayableStage(
     return retirePlayer(player);
   }
 
-  const withIdentity = withStageIdentity(player, stage);
-  const withBonus = applyStageAdvanceBonus(withIdentity);
+  const withBonus = enterStageState(player, stage);
   const firstEvent = firstEligibleEventOfStage(stage, withBonus.flags);
 
   if (!firstEvent) {
@@ -358,6 +450,8 @@ function enterPlayableStage(
     ...withBonus,
     currentEventId: firstEvent.id,
     isGameOver: false,
+    nbaSeason:
+      stage === "NBA" ? Math.max(1, withBonus.nbaSeason || 0) : withBonus.nbaSeason,
   };
 }
 
@@ -395,9 +489,11 @@ export function advanceFromChoice(
   }
 
   if (event.nextEventId) {
-    const routed = getEventById(event.nextEventId);
+    const resolvedId =
+      resolveNbaArcSentinel(event.nextEventId, player) ?? event.nextEventId;
+    const routed = getEventById(resolvedId);
     if (routed && isEventEligible(routed, player.flags)) {
-      return goToEvent(player, event.nextEventId);
+      return goToEvent(player, resolvedId);
     }
   }
 
@@ -531,6 +627,37 @@ export function applyChoice(
 
   let next = applyEffects(player, choice.effects);
   next = applyChoiceFlags(next, choice);
+
+  if (choice.advanceNbaSeason) {
+    if (next.nbaSeason >= MAX_NBA_SEASONS) {
+      // 赛季上限不再强制退役；停留在休赛期由玩家选择退役 / 国家队
+      const historyEntry: CareerHistoryEntry = {
+        eventId: event.id,
+        stage: event.stage,
+        eventTitle: event.title,
+        choiceId: choice.id,
+        choiceText: `${choice.text}｜已达赛季上限，请在休赛期做出决定`,
+        timestamp: Date.now(),
+      };
+      return {
+        ...next,
+        careerHistory: [...next.careerHistory, historyEntry],
+        currentEventId: "nba-offseason",
+      };
+    }
+    next = {
+      ...next,
+      age: next.age + 1,
+      nbaSeason: next.nbaSeason + 1,
+      stamina: clampMeter(next.stamina + 12),
+    };
+    const phase = resolveNbaArcPhase(next);
+    next = {
+      ...next,
+      role: roleFromNbaArcPhase(phase),
+    };
+  }
+
   let historyChoiceText = choice.text;
 
   if (event.eventKind === "MATCH") {

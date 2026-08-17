@@ -40,7 +40,7 @@ function C(
   };
 }
 
-/** 国家队：6 */
+/** 国家队：征召后打完仍回到 NBA 休赛期，退役仅由玩家在休赛期选择 */
 export const NATIONAL_TEAM_EVENTS: GameEvent[] = [
   {
     id: "nt-camp",
@@ -109,7 +109,7 @@ export const NATIONAL_TEAM_EVENTS: GameEvent[] = [
     visualType: "DEFENSE",
     eventKind: "MATCH",
     requiresFlags: ["NT_CALLED"],
-    matchConfig: { opponentStrength: 62, stakes: "FINAL" },
+    matchConfig: { opponentStrength: 72, stakes: "FINAL" },
     nextEventId: "nt-between",
     title: "亚洲赛场",
     description:
@@ -171,17 +171,21 @@ export const NATIONAL_TEAM_EVENTS: GameEvent[] = [
     eventKind: "MATCH",
     requiresFlags: ["NT_CALLED"],
     matchConfig: { opponentStrength: 82, stakes: "FINAL" },
-    nextStageAfterComplete: "RETIRED",
     title: "国际大赛决赛",
     description:
-      "国际大赛决赛夜。哨响之前，你回想起北极的第一下运球——然后走向中圈。",
+      "国际大赛决赛夜。哨响之前，你回想起北极的第一下运球——然后走向中圈。结束后，你仍将回到俱乐部休赛期做自己的选择。",
     kanShanDialogue: "无论结局如何，这球，我打完。",
     choices: [
       C(
         "nt-final-hero",
         "关键球亲自终结",
         { shooting: 2, finishing: 2, mental: 5, fame: 8, stamina: -4 },
-        { intent: "SCORE", nextStage: "RETIRED" },
+        {
+          intent: "SCORE",
+          clearFlags: ["NT_CALLED"],
+          setFlags: ["NT_DONE"],
+          nextEventId: "nba-offseason",
+        },
       ),
       C(
         "nt-final-team",
@@ -193,7 +197,12 @@ export const NATIONAL_TEAM_EVENTS: GameEvent[] = [
           fame: 6,
           zhihuReputation: 5,
         },
-        { intent: "TEAM", nextStage: "RETIRED" },
+        {
+          intent: "TEAM",
+          clearFlags: ["NT_CALLED"],
+          setFlags: ["NT_DONE"],
+          nextEventId: "nba-offseason",
+        },
       ),
       C(
         "nt-final-wall",
@@ -205,7 +214,12 @@ export const NATIONAL_TEAM_EVENTS: GameEvent[] = [
           fame: 7,
           stamina: -5,
         },
-        { intent: "DEFEND", nextStage: "RETIRED" },
+        {
+          intent: "DEFEND",
+          clearFlags: ["NT_CALLED"],
+          setFlags: ["NT_DONE"],
+          nextEventId: "nba-offseason",
+        },
       ),
     ],
   },
@@ -215,28 +229,35 @@ export const NATIONAL_TEAM_EVENTS: GameEvent[] = [
     visualType: "NONE",
     eventKind: "STORY",
     excludesFlags: ["NT_CALLED"],
-    nextStageAfterComplete: "RETIRED",
     title: "落选名单",
     description:
-      "国家队最终名单没有你。电话那头很短，你的职业生涯也到了该写结语的时候。",
+      "国家队最终名单没有你。电话那头很短——但俱乐部的休赛期还在，退役与否仍由你决定。",
     kanShanDialogue: "没穿上那件红衣，不等于没走过这条路。",
     choices: [
       C(
-        "nt-denied-accept",
-        "平静接受并退役",
+        "nt-denied-return",
+        "回到俱乐部休赛期再做决定",
         { mental: 1, fame: -1 },
-        { nextStage: "RETIRED" },
+        {
+          clearFlags: ["NT_CALLED"],
+          setFlags: ["NT_DONE"],
+          nextEventId: "nba-offseason",
+        },
       ),
       C(
         "nt-denied-bitter",
-        "公开抱怨选人",
+        "公开抱怨后仍回俱乐部",
         { fame: 2, zhihuReputation: -4, mental: -3 },
-        { nextStage: "RETIRED" },
+        {
+          clearFlags: ["NT_CALLED"],
+          setFlags: ["NT_DONE"],
+          nextEventId: "nba-offseason",
+        },
       ),
       C(
-        "nt-denied-coach",
-        "转行青训",
-        { mental: 2, basketballIQ: 2, money: 3000 },
+        "nt-denied-retire",
+        "就此宣布退役",
+        { mental: 2, basketballIQ: 1 },
         { nextStage: "RETIRED" },
       ),
     ],

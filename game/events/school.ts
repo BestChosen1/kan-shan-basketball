@@ -76,8 +76,8 @@ export const SCHOOL_EVENTS: GameEvent[] = [
     stage: "SCHOOL",
     visualType: "NONE",
     eventKind: "MATCH",
-    matchConfig: { opponentStrength: 38, stakes: "REGULAR" },
-    nextEventId: "school-bench-pressure",
+    matchConfig: { opponentStrength: 52, stakes: "REGULAR" },
+    nextEventId: "school-focus",
     title: "第一次正式比赛",
     description:
       "校际联赛首秀。替补席上心跳如鼓，教练突然喊你的名字——上场两分钟，决定你是否留下。",
@@ -137,7 +137,7 @@ export const SCHOOL_EVENTS: GameEvent[] = [
     stage: "SCHOOL",
     visualType: "NONE",
     eventKind: "MATCH",
-    matchConfig: { opponentStrength: 46, stakes: "REGULAR" },
+    matchConfig: { opponentStrength: 60, stakes: "REGULAR" },
     nextEventId: "school-focus",
     title: "区赛仇敌战",
     description:
@@ -171,36 +171,37 @@ export const SCHOOL_EVENTS: GameEvent[] = [
     eventKind: "STORY",
     title: "选择主攻方向",
     description:
-      "教练约谈：特招名额、普通CUBA通道、或者先打磨一年再冲。三条路，三种人生开局。",
+      "教练约谈：CUBA 特招、苦练旁路，或跳过大学联赛直接冲击海外/NBA。三条路，三种开局——但最终都通向更大的舞台。",
     kanShanDialogue: "我想把短板补上，也想让长板更长。",
     choices: [
       C(
         "school-focus-star",
-        "冲击特招，走明星通道",
+        "冲击特招，走 CUBA 明星通道",
         { shooting: 3, fame: 3, mental: 1, stamina: -2 },
         {
           setFlags: ["SCHOOL_STAR"],
-          clearFlags: ["SCHOOL_GRIND"],
+          clearFlags: ["SCHOOL_GRIND", "SKIPPED_CUBA"],
           nextEventId: "cuba-elite-invite",
         },
       ),
       C(
         "school-focus-grind",
-        "拒绝捷径，苦练旁路",
+        "拒绝捷径，苦练 CUBA 旁路",
         { defense: 3, physical: 2, mental: 2, fame: -1 },
         {
           setFlags: ["SCHOOL_GRIND"],
-          clearFlags: ["SCHOOL_STAR"],
+          clearFlags: ["SCHOOL_STAR", "SKIPPED_CUBA"],
           nextEventId: "cuba-walkon-tryout",
         },
       ),
       C(
-        "school-focus-balanced",
-        "稳妥选校，正常申报",
-        { basketballIQ: 2, passing: 2, potential: 1 },
+        "school-focus-nba-fast",
+        "跳过 CUBA，赴海外试训冲击 NBA",
+        { potential: 3, fame: 2, mental: 2, money: -2000 },
         {
-          clearFlags: ["SCHOOL_STAR", "SCHOOL_GRIND"],
-          nextEventId: "cuba-school-choice",
+          setFlags: ["NBA_BOUND", "SKIPPED_CUBA", "SKIPPED_CBA"],
+          clearFlags: ["SCHOOL_STAR", "SCHOOL_GRIND", "DOMESTIC_FOCUS"],
+          nextEventId: "nba-draft",
         },
       ),
     ],

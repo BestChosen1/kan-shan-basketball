@@ -24,6 +24,7 @@ export type {
   MatchConfig,
   MatchResult,
   MatchStakes,
+  NbaArcPhase,
   PlayerRole,
   PlayerState,
   Trophy,
@@ -50,6 +51,8 @@ export {
   INITIAL_PLAYER,
   INTENT_BONUS,
   MATCH_PERFORMANCE_WEIGHTS,
+  MATCH_WIN_MARGIN,
+  MATCH_NBA_SEASON_OPPONENT_SCALE,
   NBA_CONTRACT_BY_TIER,
   NBA_DRAFT_WEIGHTS,
   PLAYER_ROLES,
@@ -63,6 +66,7 @@ export {
   TROPHY_IDS,
   TROPHY_NAMES,
   UNDRAFTED_TEAM_NAME,
+  MAX_NBA_SEASONS,
 } from "./constants.ts";
 
 export { CAREER_EVENTS, getEventById, getEventsByStage } from "./events.ts";
@@ -86,13 +90,26 @@ export {
 export {
   buildMatchHighlight,
   calculateBasePerformance,
+  calculateEffectiveOpponentStrength,
+  calculateFormPenalty,
   calculateMatchPerformance,
+  calculateMatchSwing,
   resolveDraftStockDelta,
   resolveFameDelta,
   resolveMatch,
   resolveMatchScores,
   resolveStaminaDelta,
 } from "./match.ts";
+
+export {
+  NBA_ARC_PHASE_LABEL,
+  NBA_ARC_PHASES,
+  NBA_ARC_SENTINEL,
+  resolveNbaArcEventId,
+  resolveNbaArcPhase,
+  resolveNbaArcSentinel,
+  roleFromNbaArcPhase,
+} from "./nba-arc.ts";
 
 export {
   buildDraftMessage,

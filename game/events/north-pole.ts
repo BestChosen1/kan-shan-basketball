@@ -47,7 +47,7 @@ export const NORTH_POLE_EVENTS: GameEvent[] = [
     stage: "NORTH_POLE",
     visualType: "NONE",
     eventKind: "STORY",
-    nextEventId: "np-arctic-training",
+    nextEventId: "np-cold-doubt",
     title: "第一次接触篮球",
     description:
       "极夜漫长，冰面空旷。一只被人遗弃的旧篮球滚到你脚边——你第一次真正握住它。",

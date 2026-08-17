@@ -14,9 +14,9 @@ export function CareerHeader({ stage }: CareerHeaderProps) {
           <Image
             src={getAvatarSrc(stage)}
             alt="刘看山"
-            width={197}
-            height={208}
-            className="h-full w-full object-contain p-0.5"
+            width={256}
+            height={256}
+            className="h-full w-full object-cover object-center"
             priority
           />
         </div>

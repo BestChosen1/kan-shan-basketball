@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { CareerCover } from "@/components/career-cover";
+import { CareerEndingArchive } from "@/components/career-ending-archive";
+import { CareerEndingCeremony } from "@/components/career-ending-ceremony";
 import { CareerEvent } from "@/components/career-event";
 import { CareerHeader } from "@/components/career-header";
 import { CareerInfo } from "@/components/career-info";
-import { CareerSummary } from "@/components/career-summary";
 import { CareerTimeline } from "@/components/career-timeline";
 import {
   GameResultOverlay,
@@ -43,6 +45,8 @@ interface StageTransitionState {
   from: CareerStage;
   to: CareerStage;
 }
+
+type EndingPhase = "idle" | "ceremony" | "archive";
 
 function buildPlayerSnapshot(player: PlayerState) {
   return {
@@ -93,6 +97,7 @@ function buildCareerAgentContext(input: {
 }
 
 export default function Home() {
+  const [hasStarted, setHasStarted] = useState(false);
   const [player, setPlayer] = useState<PlayerState>(() => createInitialPlayer());
   const [displayPlayer, setDisplayPlayer] = useState<PlayerState>(() =>
     createInitialPlayer(),
@@ -102,6 +107,7 @@ export default function Home() {
   );
   const [stageTransition, setStageTransition] =
     useState<StageTransitionState | null>(null);
+  const [endingPhase, setEndingPhase] = useState<EndingPhase>("idle");
   const [isBusy, setIsBusy] = useState(false);
   const [zhihuStatus, setZhihuStatus] = useState<ZhihuCardStatus>("idle");
   const [zhihuResult, setZhihuResult] =
@@ -113,26 +119,26 @@ export default function Home() {
   const event = getCurrentEvent(displayPlayer);
   const finished =
     isCareerFinished(displayPlayer) && !pendingResult && !stageTransition;
+  const showCeremony = finished && endingPhase === "ceremony";
+  const showArchive = finished && endingPhase === "archive";
   const viewPlayer = pendingResult || stageTransition ? player : displayPlayer;
 
   const completedStages = useMemo(() => {
     const done = new Set<CareerStage>();
-    const currentIndex = CAREER_STAGE_ORDER.indexOf(viewPlayer.stage);
-
-    for (let i = 0; i < currentIndex; i += 1) {
-      const stage = CAREER_STAGE_ORDER[i];
-      if (stage) done.add(stage);
-    }
-
-    if (viewPlayer.stage === "RETIRED") {
-      for (const stage of CAREER_STAGE_ORDER) {
-        done.add(stage);
+    for (const entry of viewPlayer.careerHistory) {
+      if (entry.stage !== "RETIRED") {
+        done.add(entry.stage);
       }
-      done.delete("RETIRED");
     }
-
+    if (
+      viewPlayer.stage !== "RETIRED" &&
+      CAREER_STAGE_ORDER.includes(viewPlayer.stage)
+    ) {
+      // 当前阶段进行中：时间轴上不标为已完成
+      done.delete(viewPlayer.stage);
+    }
     return done;
-  }, [viewPlayer.stage]);
+  }, [viewPlayer.careerHistory, viewPlayer.stage]);
 
   function resetZhihuPanel() {
     zhihuAbortRef.current?.abort();
@@ -206,6 +212,9 @@ export default function Home() {
   function revealPlayer(next: PlayerState) {
     setDisplayPlayer(next);
     setIsBusy(false);
+    if (isCareerFinished(next)) {
+      setEndingPhase("ceremony");
+    }
   }
 
   function beginStageTransition(from: CareerStage, to: CareerStage) {
@@ -221,7 +230,15 @@ export default function Home() {
   }
 
   function handleChoice(choiceId: string) {
-    if (isBusy || pendingResult || stageTransition || finished) return;
+    if (
+      isBusy ||
+      pendingResult ||
+      stageTransition ||
+      finished ||
+      endingPhase !== "idle"
+    ) {
+      return;
+    }
 
     const before = player;
     const currentEvent = getCurrentEvent(before);
@@ -290,6 +307,22 @@ export default function Home() {
     revealPlayer(player);
   }
 
+  function handleEndingContinue() {
+    setEndingPhase("archive");
+  }
+
+  function handleStartCareer() {
+    resetZhihuPanel();
+    const next = createInitialPlayer();
+    setPlayer(next);
+    setDisplayPlayer(next);
+    setPendingResult(null);
+    setStageTransition(null);
+    setEndingPhase("idle");
+    setIsBusy(false);
+    setHasStarted(true);
+  }
+
   function handleRestart() {
     resetZhihuPanel();
     const next = createInitialPlayer();
@@ -297,12 +330,27 @@ export default function Home() {
     setDisplayPlayer(next);
     setPendingResult(null);
     setStageTransition(null);
+    setEndingPhase("idle");
     setIsBusy(false);
+    setHasStarted(false);
   }
 
   const transitionCopy = stageTransition
     ? getStageTransitionCopy(stageTransition.from, stageTransition.to)
     : null;
+
+  if (!hasStarted) {
+    return <CareerCover onStart={handleStartCareer} />;
+  }
+
+  if (showArchive) {
+    return (
+      <CareerEndingArchive
+        player={displayPlayer}
+        onRestart={handleRestart}
+      />
+    );
+  }
 
   return (
     <div className="arctic-bg flex min-h-full flex-1 flex-col overflow-x-hidden">
@@ -314,14 +362,17 @@ export default function Home() {
           <PlayerStats player={viewPlayer} />
         </div>
 
-        {finished ? (
-          <CareerSummary player={displayPlayer} onRestart={handleRestart} />
-        ) : event ? (
+        {event && !showCeremony ? (
           <CareerEvent
             event={event}
             stage={displayPlayer.stage}
             historyCount={displayPlayer.careerHistory.length}
-            disabled={isBusy || Boolean(pendingResult) || Boolean(stageTransition)}
+            disabled={
+              isBusy ||
+              Boolean(pendingResult) ||
+              Boolean(stageTransition) ||
+              endingPhase !== "idle"
+            }
             onChoose={handleChoice}
           />
         ) : null}
@@ -349,6 +400,13 @@ export default function Home() {
           subtitle={transitionCopy.subtitle}
           toStage={stageTransition.to}
           onContinue={handleStageContinue}
+        />
+      ) : null}
+
+      {showCeremony ? (
+        <CareerEndingCeremony
+          player={displayPlayer}
+          onContinue={handleEndingContinue}
         />
       ) : null}
     </div>

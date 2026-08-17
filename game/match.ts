@@ -1,6 +1,9 @@
 import {
   INTENT_BONUS,
+  MATCH_NBA_SEASON_OPPONENT_SCALE,
   MATCH_PERFORMANCE_WEIGHTS,
+  MATCH_STAMINA_PENALTY_DIV,
+  MATCH_WIN_MARGIN,
   PERFORMANCE_MAX,
   PERFORMANCE_MIN,
   ROLE_BONUS,
@@ -55,6 +58,55 @@ export function calculateMatchPerformance(
     STAKES_BONUS[stakes];
 
   return clamp(Math.round(raw), PERFORMANCE_MIN, PERFORMANCE_MAX);
+}
+
+/** 体力 / 心态不足时的表现扣减（确定性） */
+export function calculateFormPenalty(player: PlayerState): number {
+  const staminaGap = Math.max(0, 100 - player.stamina);
+  const mentalGap = Math.max(0, 65 - player.mental);
+  return (
+    Math.floor(staminaGap / MATCH_STAMINA_PENALTY_DIV) +
+    Math.floor(mentalGap / 12)
+  );
+}
+
+/**
+ * 确定性比赛波动：约 -6 ~ +7，略偏中性，避免长期极端连败。
+ * 同输入永远相同。
+ */
+export function calculateMatchSwing(
+  player: PlayerState,
+  eventId: string,
+  choiceId: string,
+): number {
+  const seed = `${eventId}|${choiceId}|${player.careerHistory.length}|${player.overall}|${player.stamina}|${player.nbaSeason}`;
+  let hash = 2166136261;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash ^= seed.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const unit = (hash >>> 0) % 13;
+  return unit - 4;
+}
+
+export function calculateEffectiveOpponentStrength(
+  player: PlayerState,
+  baseOpponent: number,
+  stakes: MatchStakes,
+): number {
+  let strength = baseOpponent;
+  if (player.stage === "NBA") {
+    strength += Math.floor(
+      Math.max(0, player.nbaSeason) * MATCH_NBA_SEASON_OPPONENT_SCALE,
+    );
+  }
+  if (stakes === "PLAYOFF") {
+    strength += 3;
+  }
+  if (stakes === "FINAL") {
+    strength += 5;
+  }
+  return clamp(Math.round(strength), 0, 99);
 }
 
 export function resolveDraftStockDelta(
@@ -186,12 +238,27 @@ export function resolveMatch(
     throw new Error(`MATCH event missing matchConfig: ${event.id}`);
   }
 
-  const { opponentStrength, stakes } = event.matchConfig;
+  const { opponentStrength: baseOpponent, stakes } = event.matchConfig;
   const performance = calculateMatchPerformance(player, choice, stakes);
-  const won = performance >= opponentStrength;
+  const formPenalty = calculateFormPenalty(player);
+  const swing = calculateMatchSwing(player, event.id, choice.id);
+  const eliteStage =
+    player.stage === "NBA" || player.stage === "NATIONAL_TEAM";
+  const winMargin = eliteStage
+    ? MATCH_WIN_MARGIN
+    : Math.max(1, MATCH_WIN_MARGIN - 1);
+  const swingScale = eliteStage ? 1 : 0.7;
+  const scaledSwing = Math.round(swing * swingScale);
+  const effectivePerformance = performance - formPenalty + scaledSwing;
+  const effectiveOpponent = calculateEffectiveOpponentStrength(
+    player,
+    baseOpponent,
+    stakes,
+  );
+  const won = effectivePerformance >= effectiveOpponent + winMargin;
   const { playerScore, opponentScore } = resolveMatchScores(
-    performance,
-    opponentStrength,
+    clamp(effectivePerformance, PERFORMANCE_MIN, PERFORMANCE_MAX),
+    effectiveOpponent,
     won,
   );
 
@@ -201,7 +268,7 @@ export function resolveMatch(
     won,
     playerScore,
     opponentScore,
-    performance,
+    performance: clamp(Math.round(effectivePerformance), PERFORMANCE_MIN, PERFORMANCE_MAX),
     stakes,
     draftStockDelta: resolveDraftStockDelta(won, performance),
     fameDelta: resolveFameDelta(won, performance, stakes),
