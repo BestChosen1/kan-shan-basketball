@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Install official Zhihu CLI via Skill setup.
+# Install official Zhihu CLI via Skill setup, then copy the binary into the
+# project tree so Railway runtime does not depend on build HOME / XDG paths.
 # Does NOT configure Access Secret. Does NOT print secrets.
 
 ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-PATH_FILE="${ROOT_DIR}/.zhihu-cli-path"
 SKILL_URL="https://developer-cdn.zhihu.com/zhihu-cli/releases/stable/skill/zhihu-cli-skill.zip"
+RAILWAY_BIN_DIR="${ROOT_DIR}/.railway/bin"
+RUNTIME_CLI="${RAILWAY_BIN_DIR}/zhihu-cli"
 
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/kanshan-zhihu-cli-setup.XXXXXX")"
 cleanup() {
@@ -59,13 +61,28 @@ process.stdout.write(data.binary_path.trim());
 '
 )"
 
-if [ ! -x "${BINARY_PATH}" ]; then
-  echo "binary_path is not an executable file" >&2
+if [ ! -f "${BINARY_PATH}" ]; then
+  echo "binary_path is not a regular file" >&2
   exit 1
 fi
 
-# Persist absolute CLI path for Render start script. Never write secrets.
-printf '%s\n' "${BINARY_PATH}" > "${PATH_FILE}"
+if [ ! -x "${BINARY_PATH}" ]; then
+  echo "binary_path is not executable" >&2
+  exit 1
+fi
 
-echo "Zhihu CLI ready." >&2
-echo "Wrote ${PATH_FILE}" >&2
+mkdir -p "${RAILWAY_BIN_DIR}"
+# Resolve through symlinks so we copy the real binary into the project tree.
+SOURCE_BINARY="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BINARY_PATH}")"
+cp "${SOURCE_BINARY}" "${RUNTIME_CLI}"
+chmod 755 "${RUNTIME_CLI}"
+
+if [ ! -x "${RUNTIME_CLI}" ]; then
+  echo "runtime CLI copy is not executable" >&2
+  exit 1
+fi
+
+echo "Verifying runtime CLI capabilities..." >&2
+"${RUNTIME_CLI}" capabilities >/dev/null
+
+echo "Zhihu CLI ready at ${RUNTIME_CLI}" >&2

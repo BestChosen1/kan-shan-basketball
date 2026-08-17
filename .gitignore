@@ -36,8 +36,11 @@ yarn-error.log*
 .env.*.local
 !.env.example
 
-# Zhihu CLI path file from setup-zhihu-cli.sh (no secrets)
+# Zhihu CLI path file from older setup (no secrets)
 .zhihu-cli-path
+
+# Project-local Zhihu CLI copy for Railway/production runtime
+.railway/
 
 # vercel
 .vercel
